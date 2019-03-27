@@ -73,7 +73,7 @@ def set_prefs(prefs):
     # If `True` modules with syntax errors are considered to be empty.
     # The default value is `False`; When `False` syntax errors raise
     # `rope.base.exceptions.ModuleSyntaxError` exception.
-    prefs['ignore_syntax_errors'] = True
+    prefs['ignore_syntax_errors'] = False
 
     # If `True`, rope ignores unresolvable imports.  Otherwise, they
     # appear in the importing namespace.

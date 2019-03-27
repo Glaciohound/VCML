@@ -9,15 +9,21 @@ from copy import deepcopy
 from dataset.image_transforms import SquarePad
 from argparse import Namespace
 from tqdm import tqdm
+from dataset.tools.token_utils import build_tokenMap
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, args, command):
+    def __init__(self, args, info=None):
+        self.info = info
         self.args = args
-        self.command = command
 
+        pbar = tqdm(total=2, desc='Creating Dataset')
         self.load_graphs()
+        pbar.update()
         self.load_vocabulary()
+        self.info.vocabulary = self.vocabulary
+        pbar.update()
+        pbar.close()
 
         tform = [
             SquarePad(),
@@ -28,10 +34,10 @@ class Dataset(torch.utils.data.Dataset):
         self.transform_pipeline = Compose(tform)
 
     def __getitem__(self, index_):
+        args = self.args
         if isinstance(index_, str):
             index_ = self.image_ids.index(index_)
-        args = self.args
-        index = self.split_index[index_]
+        index = self.index[index_]
         image_unpadded = Image.open(self.filenames[index]).convert('RGB')
 
         w, h = image_unpadded.size
@@ -44,10 +50,10 @@ class Dataset(torch.utils.data.Dataset):
             im_size = (args.image_scale, args.image_scale, img_scale_factor)
 
         gt_boxes, gt_classes, gt_attributes =\
-            [e[self.box_ranges[index, 0] : self.box_ranges[index, 1]]
+            [e[self.obj_ranges[index, 0] : self.obj_ranges[index, 1]]
              for e in [self.gt_boxes, self.gt_classes, self.gt_attributes]]
         gt_rels = self.gt_relations\
-            [self.relation_ranges[index, 0]  : self.relation_ranges[index, 1]]
+            [self.rel_ranges[index, 0]  : self.rel_ranges[index, 1]]
 
         entry = Namespace()
         entry.__dict__.update({
@@ -60,50 +66,50 @@ class Dataset(torch.utils.data.Dataset):
             'gt_attributes': gt_attributes,
             'gt_relations': gt_rels,
 
-            'scale': args.image_scale / args.box_scale,  # Multiply the boxes by this.
+            'scale': args.image_scale / args.box_scale,
         })
 
         if hasattr(self, 'rpn_rois'):
             entry['proposals'] = self.rpn_rois[index]
 
-        assertion_checks(entry)
+        self.assertion_checks(entry)
         return entry
 
     def load_graphs(self):
         args = self.args
-        pbar = tqdm(total=5, desc='Loading SceneGraphs', postfix='file')
+        pbar = tqdm(total=5, desc='Loading SceneGraphs')
 
         SG_h5 = h5.File(args.sceneGraph_h5, 'r')
-        pbar.update(); pbar.set_postfix_str('infos')
+        pbar.update()
         self.splits = SG_h5['split'][:]
         self.image_ids = SG_h5['img_ids'][:].astype('U').tolist()
         self.filenames = [os.path.join(args.image_dir, filename+'.jpg')
                           for filename in self.image_ids]
+        self.index = np.arange(self.splits.shape[0])
         self.split_indexes = {
-            k: np.array([i for i in range(self.splits.shape[0]) if self.splits[i] == v])
+            k: np.array([i for i in range(self.splits.shape[0])
+                         if self.splits[i] == v])
             for k, v in {'train': 0, 'val': 1, 'test': 2}.items()
         }
 
         if args.max_nImages > -1:
             self.valid_num = args.max_nImages
 
-        pbar.update(); pbar.set_postfix_str('boxes')
-        self.box_ranges = SG_h5['box_ranges'][:]
-        self.relation_ranges = SG_h5['relation_ranges'][:]
+        pbar.update()
+        self.obj_ranges = SG_h5['obj_ranges'][:]
+        self.rel_ranges = SG_h5['rel_ranges'][:]
 
         # loading box information
-        pbar.update(); pbar.set_postfix_str('objects')
+        pbar.update()
         self.gt_classes = SG_h5['labels'][:, 0]
         self.gt_boxes = SG_h5['boxes_{}'.format(args.box_scale)][:].astype(np.float32)  # will index later
         self.gt_attributes = SG_h5['attributes'][:]
-        assert np.all(self.gt_boxes[:, :2] >= 0)  # sanity check
-        assert np.all(self.gt_boxes[:, 2:] > 0)  # no empty box
         # convert from xc, yc, w, h to x1, y1, x2, y2
         self.gt_boxes[:, :2] = self.gt_boxes[:, :2] - self.gt_boxes[:, 2:] / 2
         self.gt_boxes[:, 2:] = self.gt_boxes[:, :2] + self.gt_boxes[:, 2:]
 
         # load relation labels
-        pbar.update(); pbar.set_postfix_str('relations')
+        pbar.update()
         self.gt_relations = SG_h5['relations'][:]
 
         pbar.update()
@@ -114,66 +120,27 @@ class Dataset(torch.utils.data.Dataset):
         args = self.args
         with open(args.vocabulary_file, 'r') as f:
             self.vocabulary = json.load(f)
-        self.vocabulary['label_to_idx']['__background__'] = 0
-        self.vocabulary['predicate_to_idx']['__background__'] = 0
 
-        ((self.label_to_idx, self.idx_to_labels),
-         (self.attribute_to_idx, self.idx_to_attributes),
-         (self.predicate_to_idx, self.idx_to_predicates)) =\
-            [(x, sorted(x, key=lambda k: x[k]))
-             for x in [self.vocabulary[c]
-                       for c in ('label_to_idx', 'attribute_to_idx', 'predicate_to_idx')]]
+        build_tokenMap(self, self.vocabulary)
 
-    def to_mode(self, mode):
-        self.mode = mode
-        self.split_index = self.split_indexes[mode]
+    def to_split(self, split):
+        self.split = split
+        self.index = self.split_indexes[split]
         return self
 
     @classmethod
     def get_datasets(cls, args):
-        base_dataset = cls(args, command=None)
-        train, val, test = [deepcopy(base_dataset).to_mode(m)
-                            for m in ['train', 'val', 'test']]
+        base_dataset = cls(args)
+        train, val, test = [deepcopy(base_dataset).to_split(s)
+                            for s in ['train', 'val', 'test']]
         return train, val, test
 
     def __len__(self):
-        return len(self.split_index)
+        return len(self.index)
 
-def assertion_checks(entry):
-    pass
+    def assertion_checks(self, entry):
+        pass
 
-def cn_collate(data):
-    return data
-
-class DataLoader(torch.utils.data.DataLoader):
     @classmethod
-    def get_dataloaders(cls, args):
-        train_dataset, val_dataset, test_dataset = Dataset.get_datasets(args)
-        train_loader = cls(
-            dataset=train_dataset,
-            batch_size=args.train_batch_size * args.num_gpus,
-            shuffle=args.train_shuffle,
-            num_workers=args.num_workers,
-            collate_fn=cn_collate,
-            drop_last=True,
-            pin_memory=True,
-        )
-        val_loader = cls(
-            dataset=val_dataset,
-            batch_size=args.val_batch_size * args.num_gpus,
-            shuffle=False,
-            num_workers=args.num_workers,
-            collate_fn=cn_collate,
-            drop_last=True,
-            pin_memory=True,
-        )
-        test_loader = cls(
-            dataset=test_dataset,
-            batch_size=args.val_batch_size * args.num_gpus,
-            shuffle=False,
-            num_workers=args.num_workers,
-            collate_fn=cn_collate,
-            drop_last=True,
-            pin_memory=True,
-        )
-        return train_loader, val_loader, test_loader
+    def collate(cls, data):
+        return data
