@@ -2,7 +2,8 @@ import torch
 import json
 import numpy as np
 from argparse import Namespace
-from dataset.tools import program_utils, question_utils
+from dataset.tools import program_utils, question_utils, protocol
+from dataset.toy import teddy_dataset
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -14,7 +15,7 @@ class Dataset(torch.utils.data.Dataset):
         self.program_utils = program_utils
         if not hasattr(Dataset, 'questions'):
             Dataset.load_questions()
-            Dataset.load_protocol()
+            Dataset.protocol = protocol.Protocol(args, info)
         info.question_dataset = self
 
     def __getitem__(self, index_):
@@ -26,19 +27,20 @@ class Dataset(torch.utils.data.Dataset):
 
         question = self.questions[index]
         program = program_utils.semantic2list(question['semantic']) if 'semantic' in question else []
-        question_encoded = question_utils.encode_question(question['question'], self.words2idx, length=args.max_question_length)
+        question_encoded = question_utils.encode_question(question['question'], self.protocol, length=args.max_question_length)
         if info.compact_data:
             program += [{'operation': '<NULL>',
                          'argument': '<NULL>'}
                         for i in range(args.max_program_length-len(program))]
         program_encoded = np.array(
-            [[self.operations2idx[op['operation']],
-              self.concepts2idx[op['argument']]]
-             for op in program]
+            [[self.protocol['operations', op['operation']],
+              self.protocol['concepts', op['argument']]]
+             for i, op in enumerate(program)
+             if i < args.max_program_length]
         )
         scene = info.visual_dataset[question['imageId']] if hasattr(info, 'visual_dataset') else None
         answer = question['answer']
-        answer_encoded = self.concepts2idx[answer]
+        answer_encoded = self.protocol['concepts', answer]
 
         entry = Namespace()
         entry.__dict__.update({
@@ -53,29 +55,31 @@ class Dataset(torch.utils.data.Dataset):
     @classmethod
     def load_questions(cls):
         args = cls.args
-        with open(args.questions_json, 'r') as f:
-            questions = json.load(f)
-        filtered = []
-        for k, q in questions.items():
-            if question_utils.filter_questions(q, args.question_filter):
-                filtered.append(k)
-        questions = {k: questions[k] for k in filtered}
-        for q_id, question in questions.items():
-            question['id'] = q_id
-        cls.questions = list(questions.values())
-        cls.split_indexes = {split: [] for split in
-                              ['train', 'test', 'val', 'challenge']}
-        for i, q in enumerate(cls.questions):
-            split = q.get('split', 'train')
-            cls.split_indexes[split].append(i)
+        info = cls.info
+        if args.toy:
+            cls.questions =\
+                teddy_dataset.ToyQuestionDataset(args, info)
+            info.visual_dataset =\
+                teddy_dataset.ToyVisualDataset(args, info)
+            cls.split_indexes = {split: np.arange(len(cls.questions)).tolist() for split in
+                                 ['train', 'test', 'val', 'challenge']}
 
-    @classmethod
-    def load_protocol(cls):
-        with open(cls.args.protocol_file, 'r') as f:
-            cls.protocol = json.load(f)
-        cls.info.protocol = cls.protocol
-
-        question_utils.build_tokenMap(cls, cls.protocol, add_special_tokens=True)
+        else:
+            with open(args.questions_json, 'r') as f:
+                questions = json.load(f)
+            filtered = []
+            for k, q in questions.items():
+                if question_utils.filter_questions(q, args.question_filter):
+                    filtered.append(k)
+            questions = {k: questions[k] for k in filtered}
+            for q_id, question in questions.items():
+                question['id'] = q_id
+            cls.questions = list(questions.values())
+            cls.split_indexes = {split: [] for split in
+                                 ['train', 'test', 'val', 'challenge']}
+            for i, q in enumerate(cls.questions):
+                split = q.get('split', 'train')
+                cls.split_indexes[split].append(i)
 
     def to_split(self, split):
         self.split = split

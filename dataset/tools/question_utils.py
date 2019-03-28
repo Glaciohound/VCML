@@ -39,18 +39,13 @@ def tokenize(s, delim=' ',
     return tokens
 
 
-def encode_question(question, token_to_idx, allow_unk=False, length=0):
+def encode_question(question, protocol, allow_unk=False, length=0):
     seq_tokens = tokenize(question, punct_to_keep=[';', ',', '?', '.'])
     seq_idx = []
     for token in seq_tokens:
-        if token not in token_to_idx:
-            if allow_unk:
-                token = '<UNK>'
-            else:
-                raise KeyError('Token "%s" not in vocab' % token)
         seq_idx.append(token)
     seq_idx += ['<NULL>' for i in range(length-len(seq_idx))]
-    seq_idx = [token_to_idx[x] for x in seq_idx]
+    seq_idx = [protocol['words', x] for x in seq_idx]
     return np.array(seq_idx)
 
 def filter_questions(question, mode):

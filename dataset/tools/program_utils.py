@@ -106,7 +106,8 @@ def semantic2list(program_list):
             splits = operation.split(' ')
             if len(splits) > 2:
                 operation = splits[0]
-                category = ''.join([splits[1]] + [s[0].upper()+s[1:] for s in splits[2:]])
+                #category = ''.join([splits[1]] + [s[0].upper()+s[1:] for s in splits[2:]])
+                category = '_'.join(splits[1:])
             else:
                 operation, category = splits
         if category == 'rel':
@@ -181,6 +182,10 @@ def semantic2list(program_list):
         elif operation == 'query':
             # query attribute
             set_insert(argument)
+
+        elif operation == 'exist':
+            # whether a kind of objects exist
+            set_insert(operation)
 
     build_list(program_list[-1])
     return result

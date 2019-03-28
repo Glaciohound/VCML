@@ -16,15 +16,31 @@ from time import time
 def train_epoch(args, info):
     info.model.train()
     pbar = tqdm(total=len(info.train))
+    Yes, No, accuracy, loss = 0, 0, 0, 0
     for data in info.train:
         info.optimizer.zero_grad()
-        output = info.model(data).to(args.device)
+        output, attentions = info.model(data)
+        output = output.to(args.device)
         loss = info.loss_fn(output, torch.LongTensor(data.answer).cuda(), reduction='mean')
+        answers = output.argmax(1).cpu().detach().numpy()
+        accuracy = accuracy * 0.9 +\
+            0.1 * (answers == data.answer).astype(int).sum() /\
+            data.answer.shape[0]
+        Yes = Yes * 0.9 +\
+            0.1 * (answers == info.protocol['concepts', 'yes'])\
+            .astype(int).sum() / data.answer.shape[0]
+        No = No * 0.9 +\
+            0.1 *  (answers == info.protocol['concepts', 'no'])\
+            .astype(int).sum() / data.answer.shape[0]
         loss.backward(retain_graph=True)
         info.optimizer.step()
 
-        pbar.set_description('Loss: {:.6f}'.format(loss.item()))
+        #pbar.set_description('Loss: {:.6f}'.format(loss.item()))
+        message = 'Loss: {:.6f}, Acc: {:.4f}, Yes/No: {:.4f}-{:.4f}'\
+            .format(loss.item(), accuracy, Yes, No)
+        info.pbar.set_description(message)
         pbar.update()
+    info.pbar.write(message)
     pbar.close()
 
 def main():
