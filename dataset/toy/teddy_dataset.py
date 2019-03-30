@@ -15,7 +15,6 @@ class ToyDataset:
     @classmethod
     def build_dataset(cls):
         args = cls.args
-        args.toy_categories = min(args.toy_categories, args.toy_attributes)
         cls.classes = ['obj_{}'.format(i)
                       for i in range(args.toy_names)]
         cls.attributes = ['attr_{}'.format(i)

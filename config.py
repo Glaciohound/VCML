@@ -4,7 +4,8 @@ import os
 import pprint
 
 class Config:
-    def __init__(self):
+    def __init__(self, info):
+        self.info = info
         args = self.parse_args()
         self.__dict__.update(vars(args))
         self.post_process()
@@ -46,12 +47,12 @@ class Config:
         parser.add_argument('--perfect_th', type=float, default=0.05)
 
         parser.add_argument('--toy', action='store_true')
-        parser.add_argument('--toy_objects', type=int, default=5)
-        parser.add_argument('--toy_names', type=int, default=20)
-        parser.add_argument('--toy_attributes', type=int, default=20)
+        parser.add_argument('--toy_objects', type=int, default=2)
+        parser.add_argument('--toy_names', type=int, default=5)
+        parser.add_argument('--toy_attributes', type=int, default=4)
         parser.add_argument('--toy_attributesPobject', type=int,
-                            default=3)
-        parser.add_argument('--toy_categories', type=int, default=5)
+                            default=2)
+        parser.add_argument('--toy_categories', type=int, default=2)
         parser.add_argument('--size_toy', type=int, default=10000)
         parser.add_argument('--toy_mode', default='exist',
                             choices=['exist', 'filter', 'query'])
@@ -74,7 +75,7 @@ class Config:
         parser.add_argument('--question_filter', default='None',
                             choices=['None', 'existance'])
 
-        parser.add_argument('--embed_dim', type=int, default=100)
+        parser.add_argument('--embed_dim', type=int, default=50)
         parser.add_argument('--hidden_dim', type=int, default=100)
         parser.add_argument('--attention_dim', type=int, default=5)
         parser.add_argument('--operation_dim', type=int, default=3)
@@ -85,7 +86,8 @@ class Config:
     def post_process(self):
         self.num_gpus = torch.cuda.device_count()
         self.use_cuda = self.num_gpus > 0
-        self.device = torch.device('cuda' if self.use_cuda else 'cpu')
+        self.info.device = torch.device('cuda' if self.use_cuda else 'cpu')
+        self.toy_categories = min(self.toy_categories, self.toy_attributes)
         self.load_by = 'question' if self.mode in ['concept-net']\
             else 'image'
         for arg in self.dir_args:

@@ -20,8 +20,8 @@ def train_epoch(args, info):
     for data in info.train:
         info.optimizer.zero_grad()
         output, attentions = info.model(data)
-        output = output.to(args.device)
-        loss = info.loss_fn(output, torch.LongTensor(data.answer).cuda(), reduction='mean')
+        output = output.to(info.device)
+        loss = info.loss_fn(output, torch.LongTensor(data.answer).to(info.device), reduction='mean')
         answers = output.argmax(1).cpu().detach().numpy()
         accuracy = accuracy * 0.9 +\
             0.1 * (answers == data.answer).astype(int).sum() /\
@@ -44,15 +44,16 @@ def train_epoch(args, info):
     pbar.close()
 
 def main():
-    args = Config()
     info = Namespace()
     info.compact_data = True
+    info.embed = embed
+    args = Config(info)
     info.visual_dataset = visual_dataset.Dataset(args, info)
     info.train, info.val, info.test = dataloader.get_dataloaders(args, question_dataset.Dataset, info)
 
     relation_net = RelationModel(args, info)
     if args.use_cuda:
-        relation_net.cuda()
+        relation_net.to(info.device)
     optimizer = optim.Adam(relation_net.parameters(),
                             lr=args.lr)
     if args.ckpt:
@@ -65,7 +66,6 @@ def main():
     info.loss_fn = F.nll_loss
     info.pbar = pbar
     info.ipython = False
-    info.embed = embed
     info.timestamp = [('start', time(), 0)]
     info.log_time = lambda x: info.timestamp.append((x, time(), time() - info.timestamp[-1][1]))
 

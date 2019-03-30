@@ -42,13 +42,13 @@ class RelationModel(nn.Module):
             return lambda x: linear2(torch.relu(linear1(x)))
 
         self.axon_mlp = build_mlp(args.attention_dim+args.embed_dim,
-                                        args.hidden_dim,
-                                        args.embed_dim,
-                                        'axon')
+                                  args.hidden_dim,
+                                  args.attention_dim,
+                                  'axon')
         self.meta_mlp = build_mlp(args.embed_dim+args.attention_dim,
-                                        args.hidden_dim,
-                                        args.attention_dim,
-                                        'meta')
+                                  args.hidden_dim,
+                                  args.attention_dim,
+                                  'meta')
 
     def forward(self, data):
         args = self.args
@@ -63,8 +63,8 @@ class RelationModel(nn.Module):
 
         def embed_without_bg(embedding, x):
             non_bg = (x != -1).astype(int)
-            x = torch.LongTensor(x+1).cuda()
-            non_bg = torch.Tensor(non_bg).cuda()
+            x = torch.LongTensor(x+1).to(info.device)
+            non_bg = torch.Tensor(non_bg).to(info.device)
             if x.dim() == 1:
                 return embedding(x)
             else:
@@ -90,7 +90,7 @@ class RelationModel(nn.Module):
         meta = self.meta_init[None].repeat((batch_size, 1))
 
         attention = self.attention_init[None, None].repeat((batch_size, dim_concept, 1))
-        arguments = self.concept_embeddingOut(torch.LongTensor(data.program[:, :, 1]).cuda())
+        arguments = self.concept_embeddingOut(torch.LongTensor(data.program[:, :, 1]).to(info.device))
         attentions = [attention]
 
         for i in range(args.max_program_length):
@@ -112,9 +112,9 @@ class RelationModel(nn.Module):
             thoughtOut_selected = get_selected(thoughtOut)
             '''
 
-            is_mode_ = torch.Tensor(is_mode[:, i, None]).to(args.device)
-            is_insert_ = torch.Tensor(is_insert[:, i, None, None]).to(args.device)
-            is_transfer_ = torch.Tensor(is_transfer[:, i, None, None]).to(args.device)
+            is_mode_ = torch.Tensor(is_mode[:, i, None]).to(info.device)
+            is_insert_ = torch.Tensor(is_insert[:, i, None, None]).to(info.device)
+            is_transfer_ = torch.Tensor(is_transfer[:, i, None, None]).to(info.device)
 
             new_meta = self.meta_mlp(torch.cat((meta, arguments[:, i]), 1))
             meta = is_mode_ * new_meta + (1-is_mode_) * meta
@@ -122,17 +122,19 @@ class RelationModel(nn.Module):
 
             attention_insert = meta_broadcast * (arguments[:, i, None] * axon).mean(2)[:, :, None]
 
-            #axon = self.out_linear(torch.cat((thoughtOut_selected, meta), 2))
-            #axon = self.axon_mlp(torch.cat((thoughtOut, meta_broadcast), 2))
-            attention_transfer = torch.Tensor(attention.shape).cuda()
+            message_transfer = torch.Tensor(axon.shape[:2] + (args.embed_dim + args.attention_dim,))
+            activated_axon = attention.mean(2)[:, :, None] * axon
             for j in range(dim_concept):
-                attention_transfer[:, j] = ((dendron[:, j, None] * axon).mean(2)[:, :, None]\
-                                        * attention).mean(1)
+                input_weight = (dendron[:, j, None] * activated_axon).mean(2)[:, :, None]
+                message_transfer[:, j, :args.embed_dim] = (input_weight * dendron).mean(1)
+                message_transfer[:, j, args.embed_dim:] = (input_weight * attention).mean(1)
+            message_transfer = message_transfer.to(info.device)
+            attention_transfer = self.axon_mlp(message_transfer) + message_transfer[:, :, args.embed_dim:]
 
             attention = attention + is_insert_ * attention_insert + is_transfer_ * attention_transfer
             attention = torch.relu(attention)
             attentions.append(attention)
 
-        output_length = attention.pow(2).mean(2)
+        output_length = attention.mean(2)
         output_softmax = F.log_softmax(output_length, 1)
         return output_softmax, torch.stack(attentions)
