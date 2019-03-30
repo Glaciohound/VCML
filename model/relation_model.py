@@ -34,18 +34,18 @@ class RelationModel(nn.Module):
         self.object_init = nn.Parameter(torch.randn(args.embed_dim))
         self.attention_init = nn.Parameter(torch.randn(args.attention_dim))
 
-        def build_linear(dim_in, dim_hidden, dim_out, name):
+        def build_mlp(dim_in, dim_hidden, dim_out, name):
             linear1 = nn.Linear(dim_in, dim_hidden)
             linear2 = nn.Linear(dim_hidden, dim_out)
             setattr(self, name+'_linear1', linear1)
             setattr(self, name+'_linear2', linear2)
             return lambda x: linear2(torch.relu(linear1(x)))
 
-        self.axon_linear = build_linear(args.attention_dim+args.embed_dim,
+        self.axon_mlp = build_mlp(args.attention_dim+args.embed_dim,
                                         args.hidden_dim,
                                         args.embed_dim,
                                         'axon')
-        self.meta_linear = build_linear(args.embed_dim+args.attention_dim,
+        self.meta_mlp = build_mlp(args.embed_dim+args.attention_dim,
                                         args.hidden_dim,
                                         args.attention_dim,
                                         'meta')
@@ -54,7 +54,8 @@ class RelationModel(nn.Module):
         args = self.args
         info = self.info
         batch_size = data.answer.shape[0]
-        dim_concept = args.max_objects + args.max_concepts
+        num_objects = max([x.gt_classes.shape[0] for x in data.scene])
+        dim_concept = num_objects + args.max_concepts
 
         is_mode = (data.program[:, :, 0] == info.protocol['operations', 'mode']).astype(int)
         is_insert = (data.program[:, :, 0] == info.protocol['operations', 'insert']).astype(int)
@@ -69,23 +70,23 @@ class RelationModel(nn.Module):
             else:
                 return (embedding(x) * non_bg[:,:,None]).sum(1)
 
-        objectsIn = self.object_init[None, None].repeat((batch_size, args.max_objects, 1))
+        objectsIn = self.object_init[None, None].repeat((batch_size, num_objects, 1))
         if args.relation_direction == 'directed':
-            objectsOut = self.object_init[None, None].repeat((batch_size, args.max_objects, 1))
+            objectsOut = self.object_init[None, None].repeat((batch_size, num_objects, 1))
         else:
             objectsOut = objectsIn
 
         for i in range(batch_size):
             num_objects = data.scene[i].gt_classes.shape[0]
-            objectsIn[i, :num_objects] = (embed_without_bg(self.class_embeddingIn, data.scene[i].gt_classes) +\
-                                          embed_without_bg(self.attribute_embeddingIn, data.scene[i].gt_attributes))\
-                [:args.max_objects]
-            objectsOut[i, :num_objects] = (embed_without_bg(self.class_embeddingOut, data.scene[i].gt_classes) +\
-                                           embed_without_bg(self.attribute_embeddingOut, data.scene[i].gt_attributes))\
-                [:args.max_objects]
+            objectsIn[i, :num_objects] =\
+                (embed_without_bg(self.class_embeddingIn, data.scene[i].gt_classes) +
+                 embed_without_bg(self.attribute_embeddingIn, data.scene[i].gt_attributes))
+            objectsOut[i, :num_objects] =\
+                (embed_without_bg(self.class_embeddingOut, data.scene[i].gt_classes) +
+                 embed_without_bg(self.attribute_embeddingOut, data.scene[i].gt_attributes))
 
-        thoughtIn = torch.cat((self.concept_embeddingIn.weight[None].repeat((batch_size, 1, 1)), objectsIn), 1)
-        thoughtOut = torch.cat((self.concept_embeddingOut.weight[None].repeat((batch_size, 1, 1)), objectsOut), 1)
+        dendron = torch.cat((self.concept_embeddingIn.weight[None].repeat((batch_size, 1, 1)), objectsIn), 1)
+        axon = torch.cat((self.concept_embeddingOut.weight[None].repeat((batch_size, 1, 1)), objectsOut), 1)
         meta = self.meta_init[None].repeat((batch_size, 1))
 
         attention = self.attention_init[None, None].repeat((batch_size, dim_concept, 1))
@@ -115,23 +116,23 @@ class RelationModel(nn.Module):
             is_insert_ = torch.Tensor(is_insert[:, i, None, None]).to(args.device)
             is_transfer_ = torch.Tensor(is_transfer[:, i, None, None]).to(args.device)
 
-            new_meta = self.meta_linear(torch.cat((meta, arguments[:, i]), 1))
+            new_meta = self.meta_mlp(torch.cat((meta, arguments[:, i]), 1))
             meta = is_mode_ * new_meta + (1-is_mode_) * meta
-            #meta = meta[:, None].repeat((1, args.size_attention, 1))
             meta_broadcast = meta[:, None].repeat((1, dim_concept, 1))
 
-            attention_insert = meta_broadcast * (arguments[:, i, None] * thoughtOut).mean(2)[:, :, None]
+            attention_insert = meta_broadcast * (arguments[:, i, None] * axon).mean(2)[:, :, None]
 
             #axon = self.out_linear(torch.cat((thoughtOut_selected, meta), 2))
-            axon = self.axon_linear(torch.cat((thoughtOut, meta_broadcast), 2))
+            #axon = self.axon_mlp(torch.cat((thoughtOut, meta_broadcast), 2))
             attention_transfer = torch.Tensor(attention.shape).cuda()
             for j in range(dim_concept):
-                attention_transfer[:, j] = ((thoughtIn[:, j, None] * axon).sum(2)[:, :, None]\
+                attention_transfer[:, j] = ((dendron[:, j, None] * axon).mean(2)[:, :, None]\
                                         * attention).mean(1)
 
             attention = attention + is_insert_ * attention_insert + is_transfer_ * attention_transfer
+            attention = torch.relu(attention)
             attentions.append(attention)
 
         output_length = attention.pow(2).mean(2)
         output_softmax = F.log_softmax(output_length, 1)
-        return output_softmax, attentions
+        return output_softmax, torch.stack(attentions)

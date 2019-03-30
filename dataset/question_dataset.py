@@ -61,8 +61,12 @@ class Dataset(torch.utils.data.Dataset):
                 teddy_dataset.ToyQuestionDataset(args, info)
             info.visual_dataset =\
                 teddy_dataset.ToyVisualDataset(args, info)
-            cls.split_indexes = {split: np.arange(len(cls.questions)).tolist() for split in
-                                 ['train', 'test', 'val', 'challenge']}
+            all_indexes = np.arange(args.size_toy)
+            split_train = args.size_toy * 0.7
+            split_val = args.size_toy * 0.9
+            cls.split_indexes = {'train': all_indexes[:split_train],
+                                 'val': all_indexes[split_train: split_val],
+                                 'test': all_indexes[split_val:]}
 
         else:
             with open(args.questions_json, 'r') as f:

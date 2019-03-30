@@ -9,7 +9,7 @@ from copy import deepcopy
 from dataset.image_transforms import SquarePad
 from argparse import Namespace
 from tqdm import tqdm
-from dataset.tools.token_utils import build_tokenMap
+from dataset.tools.question_utils import build_tokenMap
 
 
 class Dataset(torch.utils.data.Dataset):

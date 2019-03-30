@@ -65,6 +65,7 @@ def main():
     info.loss_fn = F.nll_loss
     info.pbar = pbar
     info.ipython = False
+    info.embed = embed
     info.timestamp = [('start', time(), 0)]
     info.log_time = lambda x: info.timestamp.append((x, time(), time() - info.timestamp[-1][1]))
 

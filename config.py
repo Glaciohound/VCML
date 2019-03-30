@@ -39,7 +39,7 @@ class Config:
                             help='input batch size for training (default: 64)')
         parser.add_argument('--epochs', type=int, default=20, metavar='N',
                             help='number of epochs to train (default: 10)')
-        parser.add_argument('--lr', type=float, default=0.003, metavar='LR')
+        parser.add_argument('--lr', type=float, default=0.01, metavar='LR')
         parser.add_argument('--loss', type=str, default='mse',
                             choices=['mse', 'weighted', 'first', 'last'])
         parser.add_argument('--curriculum_learning', action='store_true')
@@ -51,20 +51,18 @@ class Config:
         parser.add_argument('--toy_attributes', type=int, default=20)
         parser.add_argument('--toy_attributesPobject', type=int,
                             default=3)
+        parser.add_argument('--toy_categories', type=int, default=5)
         parser.add_argument('--size_toy', type=int, default=10000)
         parser.add_argument('--toy_mode', default='exist',
-                            choices=['exist', 'exist&query'])
+                            choices=['exist', 'filter', 'query'])
 
         parser.add_argument('--ckpt', type=str)
         parser.add_argument('--name', type=str)
-        parser.add_argument('--game', type=str, default='locked',
-                            choices=['rotate', 'locked', 'freely', 'oscillate'],)
 
         parser.add_argument('--max_program_length', type=int, default=10)
         parser.add_argument('--max_question_length', type=int, default=50)
         parser.add_argument('--max_relations', type=int, default=100)
         parser.add_argument('--max_concepts', type=int, default=3300)
-        parser.add_argument('--max_objects', type=int, default=100)
         parser.add_argument('--num_classes', type=int, default=1800)
         parser.add_argument('--num_attributes', type=int, default=900)
         parser.add_argument('--size', type=int, default=4)

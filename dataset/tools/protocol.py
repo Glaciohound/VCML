@@ -35,9 +35,9 @@ class Protocol:
                 if item < len(self.protocol[category]):
                     return self.protocol[category][item]
                 else:
-                    return self.protocol2idx[category]['UNK']
+                    raise Exception('unknown token')
             else:
-                if item in self.protocol2idx[category]:
+                if item in self.protocol[category]:
                     return self.protocol2idx[category][item]
                 else:
                     return self.add_element(category, item)
@@ -50,7 +50,7 @@ class Protocol:
 
     def add_element(self, category, item):
         args = self.args
-        n = len(self.protocol)
+        n = len(self.protocol[category])
         self.protocol[category].append(item)
         self.protocol2idx[category].update({item: n})
         if args.allow_output_protocol and\

@@ -57,6 +57,7 @@ def semantic2list(program_list):
         append_ = [{'argument': argument, 'category': category}]
         if not_:
             append_.append('not')
+        set_insert(append_)
         set_insert('object_only')
 
     def set_logical(operation):
