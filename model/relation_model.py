@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-import sys
-from IPython.core import ultratb
-sys.excepthook = ultratb.FormattedTB(mode='Verbose',
-                                     color_scheme='Linux', call_pdb=1)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -124,12 +120,15 @@ class RelationModel(nn.Module):
 
             message_transfer = torch.Tensor(axon.shape[:2] + (args.embed_dim + args.attention_dim,))
             activated_axon = attention.mean(2)[:, :, None] * axon
-            for j in range(dim_concept):
-                input_weight = (dendron[:, j, None] * activated_axon).mean(2)[:, :, None]
-                message_transfer[:, j, :args.embed_dim] = (input_weight * dendron).mean(1)
-                message_transfer[:, j, args.embed_dim:] = (input_weight * attention).mean(1)
+
+            dendron_attention = torch.cat([dendron, attention], 2)
+            for j in range(batch_size):
+                input_weight = torch.matmul(dendron[j], activated_axon[j].transpose(1, 0)) / dim_concept
+                input_weight = torch.clamp(input_weight, -1, 1)
+                message_transfer[j] = torch.matmul(input_weight, dendron_attention[j]) / dim_concept
             message_transfer = message_transfer.to(info.device)
             attention_transfer = self.axon_mlp(message_transfer) + message_transfer[:, :, args.embed_dim:]
+            #attention_transfer = message_transfer[:, :, args.embed_dim:]
 
             attention = attention + is_insert_ * attention_insert + is_transfer_ * attention_transfer
             attention = torch.relu(attention)

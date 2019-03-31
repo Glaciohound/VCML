@@ -18,7 +18,7 @@ class Config:
             self.dir_args.append(arg_name.strip('-'))
             parser.add_argument(arg_name, **kwargs)
 
-        parser.add_argument('--data_dir', default='../data')
+        parser.add_argument('--data_dir', default='../../data/gqa')
         dir_add_argument('--image_dir', default='raw/allImages/images')
         dir_add_argument('--sceneGraph_h5', default='processed/SG.h5')
         dir_add_argument('--sceneGraph_json', default='raw/sceneGraphs/all_sceneGraphs.json')
@@ -88,6 +88,7 @@ class Config:
         self.use_cuda = self.num_gpus > 0
         self.info.device = torch.device('cuda' if self.use_cuda else 'cpu')
         self.toy_categories = min(self.toy_categories, self.toy_attributes)
+        self.toy_attributes = min(self.toy_attributes, self.toy_categories)
         self.load_by = 'question' if self.mode in ['concept-net']\
             else 'image'
         for arg in self.dir_args:
