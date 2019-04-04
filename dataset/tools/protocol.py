@@ -3,59 +3,82 @@ import os
 from dataset.tools import question_utils
 
 class Protocol:
-    def __init__(self, args, info=None):
-        self.args = args
-        self.info = info
-        self.load_protocol()
+    def __init__(self, allow_output_protocol, protocol_file, gather=False, use_special_tokens=True):
+        self.allow_output_protocol = allow_output_protocol
+        self.gather = gather
+        self.protocol_file = protocol_file
+        self.use_special_tokens = use_special_tokens
 
-    def load_protocol(self):
-        args = self.args
-        info = self.info
-
-        if os.path.exists(args.protocol_file):
-            with open(self.args.protocol_file, 'r') as f:
-                self.protocol = json.load(f)
+        if os.path.exists(protocol_file):
+            with open(self.protocol_file, 'r') as f:
+                self.records_ = json.load(f)
         else:
-            self.protocol = {'words': [], 'concepts': [], 'operations': []}
-        if info is not None:
-            info.protocol = self
+            self.records_ = {}
+            if gather:
+                self.records_['total'] = []
 
-        for value in self.protocol.values():
-            for token in question_utils.special_tokens:
-                if token not in value:
-                    value.append(token)
-
-        self.protocol2idx = {key: {k: i for i, k in enumerate(self.protocol[key])}
-                             for key in self.protocol}
+        if not gather:
+            self.records2idx = {key: {k: i for i, k in enumerate(self.records_[key])}
+                                for key in self.records_}
+        else:
+            self.records2idx = {k: i for i, k in enumerate(self.records_['total'])}
 
     def __getitem__(self, query):
         if isinstance(query, tuple):
             category, item = query
+            if not category in self.records_:
+                self._add_record(category)
             if isinstance(item, int):
-                if item < len(self.protocol[category]):
-                    return self.protocol[category][item]
+                if item < len(self.records_[category]):
+                    return self.records_[category][item]
                 else:
                     raise Exception('unknown token')
             else:
-                if item in self.protocol[category]:
-                    return self.protocol2idx[category][item]
+                if item in self.records_[category]:
+                    if not self.gather:
+                        return self.records2idx[category][item]
+                    else:
+                        return self.records2idx[item]
                 else:
-                    return self.add_element(category, item)
+                    self._add_element(category, item)
+                    return self[category, item]
         else:
-            category = query
-            if category in self.protocol:
-                return self.protocol[category]
+            if self.gather and query in self.records2idx:
+                return self.records2idx[query]
             else:
-                return self.protocol2idx[category.split('2')[0]]
+                category = query
+                if not category in self.records_:
+                    self._add_record(category)
+                return self.records_[category]
 
-    def add_element(self, category, item):
-        args = self.args
-        n = len(self.protocol[category])
-        self.protocol[category].append(item)
-        self.protocol2idx[category].update({item: n})
-        if args.allow_output_protocol and\
-                os.path.exists(os.path.join(
-                    *args.protocol_file.split('/')[:-1])):
-            with open(args.protocol_file, 'w') as f:
-                json.dump(self.protocol, f)
-        return n
+    def _add_element(self, category, item):
+        self.records_[category].append(item)
+        if self.gather:
+            if not item in self.records_['total']:
+                self.records_['total'].append(item)
+
+        if not self.gather:
+            self.records2idx[category].update(
+                {item: self.records_[category].index(item)})
+        else:
+            self.records2idx.update({item: self.records_['total'].index(item)})
+
+        if self.allow_output_protocol and\
+                os.path.isdir(os.path.dirname(self.protocol_file)):
+            with open(self.protocol_file, 'w') as f:
+                json.dump(self.records_, f)
+
+    def _add_record(self, category):
+        self.records_[category] = []
+        if not self.gather:
+            self.records2idx[category] = {}
+        if self.use_special_tokens:
+            for v in list(question_utils.special_tokens):
+                self._add_element(category, v)
+
+    @property
+    def records(self):
+        output = list(self.records_)
+        if self.gather:
+            output.remove('total')
+        return output

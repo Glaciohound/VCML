@@ -15,36 +15,49 @@ from dataset import visual_dataset, question_dataset, dataloader
 from argparse import Namespace
 from model.relation_model import RelationModel
 from time import time
+from utils.recording import Recording
+
+
+def run_batch(args, info, data):
+    output, history = info.model(data)
+    output = output.to(info.device)
+    loss = info.loss_fn(output, torch.LongTensor(data.answer).to(info.device),
+                        reduction='mean')
+    answers = output.argmax(1).cpu().detach().numpy()
+    accuracy = (answers == data.answer).astype(int).sum()\
+        / data.answer.shape[0]
+    yes = (answers == info.protocol['concepts', 'yes']).astype(int).sum()\
+        / data.answer.shape[0]
+    no = (answers == info.protocol['concepts', 'no']).astype(int).sum()\
+        / data.answer.shape[0]
+    return loss, accuracy, yes, no
+
 
 def train_epoch(args, info):
     info.model.train()
     pbar = tqdm(total=len(info.train))
-    Yes, No, accuracy, loss = 0, 0, 0, 0
+    recording = Recording(args, info, ['loss', 'accuracy', 'yes', 'no'], mode='decaying')
     for data in info.train:
         info.optimizer.zero_grad()
-        output, attentions = info.model(data)
-        output = output.to(info.device)
-        loss = info.loss_fn(output, torch.LongTensor(data.answer).to(info.device), reduction='mean')
-        answers = output.argmax(1).cpu().detach().numpy()
-        accuracy = accuracy * 0.9 +\
-            0.1 * (answers == data.answer).astype(int).sum() /\
-            data.answer.shape[0]
-        Yes = Yes * 0.9 +\
-            0.1 * (answers == info.protocol['concepts', 'yes'])\
-            .astype(int).sum() / data.answer.shape[0]
-        No = No * 0.9 +\
-            0.1 *  (answers == info.protocol['concepts', 'no'])\
-            .astype(int).sum() / data.answer.shape[0]
-        loss.backward(retain_graph=True)
+        recording.update(run_batch(args, info, data))
+        recording.previous['loss'].backward(retain_graph=True)
         info.optimizer.step()
 
-        #pbar.set_description('Loss: {:.6f}'.format(loss.item()))
-        message = 'Loss: {:.6f}, Acc: {:.4f}, Yes/No: {:.4f}-{:.4f}'\
-            .format(loss.item(), accuracy, Yes, No)
-        info.pbar.set_description(message)
+        info.pbar.set_description(str(recording))
         pbar.update()
-    info.pbar.write(message)
+
+    info.pbar.write('[TRAIN] ' + str(recording))
     pbar.close()
+
+
+def val_epoch(args, info):
+    info.model.eval()
+    recording = Recording(args, info, ['loss', 'accuracy', 'yes', 'no'], mode='average')
+    for data in tqdm(info.val):
+        recording.update(run_batch(args, info, data))
+
+    info.pbar.write('[VAL]' + str(recording))
+
 
 def main():
     info = Namespace()
@@ -52,36 +65,38 @@ def main():
     info.embed = embed
     args = Config(info)
     info.visual_dataset = visual_dataset.Dataset(args, info)
-    info.train, info.val, info.test = dataloader.get_dataloaders(args, question_dataset.Dataset, info)
+    info.train, info.val, info.test =\
+        dataloader.get_dataloaders(args, question_dataset.Dataset, info)
 
-    relation_net = RelationModel(args, info)
-    if args.use_cuda:
-        relation_net.to(info.device)
-    optimizer = optim.Adam(relation_net.parameters(),
-                            lr=args.lr)
+    info.model = RelationModel(args, info)
     if args.ckpt:
         ckpt = torch.load(args.ckpt)
-        relation_net.load_state_dict(ckpt['net_dict'])
-    pbar = tqdm(total=args.epochs)
-
-    info.model = relation_net
-    info.optimizer = optimizer
+        info.model.load_state_dict(ckpt['net_dict'])
+    if args.use_cuda:
+        info.model.to(info.device)
+    info.optimizer = optim.Adam(info.model.parameters(),
+                                lr=args.lr)
     info.loss_fn = F.nll_loss
-    info.pbar = pbar
+    info.pbar = tqdm(total=args.epochs)
     info.ipython = False
     info.timestamp = [('start', time(), 0)]
-    info.log_time = lambda x: info.timestamp.append((x, time(), time() - info.timestamp[-1][1]))
+    info.log = []
+    info.visual_dataset.to_mode(
+        'features' if args.task.endswith('pt') else
+        'encoded_sceneGraphs'
+    )
 
     for epoch in range(1, args.epochs + 1):
         train_epoch(args, info)
-        pbar.update()
+        val_epoch(args, info)
+        info.pbar.update()
         if args.name:
             torch.save({
                 'epoch': epoch,
-                'net_dict': relation_net.state_dict(),
-                'optimizer': optimizer.state_dict(),
+                'net_dict': info.model.state_dict(),
+                'optimizer': info.optimizer.state_dict(),
             }, '{}.tar'.format(args.name))
-    pbar.close()
+    info.pbar.close()
     embed()
 
 if __name__ == '__main__':

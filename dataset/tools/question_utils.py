@@ -39,12 +39,11 @@ def tokenize(s, delim=' ',
     return tokens
 
 
-def encode_question(question, protocol, allow_unk=False, length=0):
+def encode_question(question, protocol, allow_unk=False):
     seq_tokens = tokenize(question, punct_to_keep=[';', ',', '?', '.'])
     seq_idx = []
     for token in seq_tokens:
         seq_idx.append(token)
-    seq_idx += ['<NULL>' for i in range(length-len(seq_idx))]
     seq_idx = [protocol['words', x] for x in seq_idx]
     return np.array(seq_idx)
 

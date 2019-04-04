@@ -1,176 +1,209 @@
+from dataset.tools import protocol
 import numpy as np
-from argparse import Namespace
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 class ToyDataset:
-    built = False
+    inited = False
 
-    def __init__(self, args, info=None):
+    def __init__(self, args, info):
         cls = ToyDataset
         cls.info = info
         cls.args = args
-        if not cls.built:
-            cls.build_dataset()
+        cls.inited = True
 
     @classmethod
-    def build_dataset(cls):
+    def init(cls, args, info):
+        if not cls.inited:
+            cls.__init__(cls, args, info)
+
+    @classmethod
+    def build_visual_dataset(cls):
         args = cls.args
-        cls.classes = ['obj_{}'.format(i)
-                      for i in range(args.toy_names)]
-        cls.attributes = ['attr_{}'.format(i)
-                          for i in range(args.toy_attributes)]
-        cls.categories = {'cate_{}'.format(i): []
-                          for i in range(args.toy_categories)}
-        attributes_ids = list(range(args.toy_attributes))
-        for cat in cls.categories:
-            entries = np.random.choice(attributes_ids, args.toy_attributes//args.toy_categories, replace=False)
-            cls.categories[cat] = [cls.attributes[x] for x in entries]
-            for x in entries:
-                attributes_ids.remove(x)
+        info = cls.info
+        vocabulary = protocol.Protocol(False, '', gather=True, use_special_tokens=False)
+        info.vocabulary = vocabulary
+        for i in range(args.toy_attributes):
+            cat = min((i * args.toy_categories) // (args.toy_attributes),
+                      args.toy_categories)
+            attr_name = 'attr_{}'.format(i)
+            vocabulary['cat_{}'.format(cat), attr_name]
+
         cls.sceneGraphs = {}
-        cls.questions = []
-        cls.entries = []
-
-        for i in range(args.size_toy):
-            name = str(i)
-            scene = Namespace()
-            scene.gt_classes =\
-                np.random.choice(np.arange(args.toy_names),
-                                 size=args.toy_objects,
-                                 replace=False)
-            scene.gt_attributes = -np.ones((args.toy_objects, args.toy_attributesPobject), dtype=int)
+        print('building teddy sceneGraphs')
+        for i in tqdm(range(args.max_sizeDataset)):
+            split =\
+                'train' if i < 0.8 * args.max_sizeDataset else\
+                'test' if i < 0.9 * args.max_sizeDataset else\
+                'val'
+            scene = {'objects': {}, 'split': split, 'image_id': format(i)}
             for j in range(args.toy_objects):
-                categories = np.random.choice(list(cls.categories), args.toy_attributesPobject,
+                categories = np.random.choice(vocabulary.records,
+                                              args.toy_attributesPobject,
                                               replace=False)
-                for k in range(args.toy_attributesPobject):
-                    scene.gt_attributes[j, k] = cls.attributes.index(np.random.choice(cls.categories[categories[k]], 1)[0])
-            scene.id = name
+                obj = {cat: np.random.choice(vocabulary[cat], 1)[0]
+                       for cat in categories}
+                scene['objects'].update({str(len(scene['objects'])): obj})
+            cls.sceneGraphs[str(i)] = scene
 
-            if args.toy_mode == 'exist':
-                question = cls.exist_question(scene)
-            elif args.toy_mode == 'filter':
-                question = cls.filter_question(scene)
-            elif args.toy_mode == 'query':
-                question = cls.query_question(scene)
-            else:
-                question = cls.exist_question(scene)
-            question['id'] = i
+    @classmethod
+    def load_visual_dataset(cls, sceneGraphs):
+        cls.sceneGraphs = sceneGraphs
 
-            cls.sceneGraphs[name] = scene
-            cls.questions.append(question)
-            cls.entries.append(name)
+    @classmethod
+    def build_question_dataset(cls):
+        args = cls.args
+        cls.questions = {}
+
+        selected_ids = np.random.choice(list(cls.sceneGraphs.keys()), args.max_sizeDataset)
+        print('building question dataset')
+        for scene_id in tqdm(selected_ids):
+            scene = cls.sceneGraphs[scene_id]
+            if 'objects' not in scene:
+                continue
+            for j in range(args.questionsPimage):
+                if args.subtask == 'exist':
+                    question = cls.exist_question(scene)
+                elif args.subtask == 'filter':
+                    question = cls.filter_question(scene)
+                elif args.subtask == 'query':
+                    question = cls.query_question(scene)
+                else:
+                    raise Exception('not such task supported as %s' % args.subtask)
+
+                if question is not None:
+                    question['image_id'] = scene_id
+                    question['split'] = scene['split']
+                    cls.questions.update({str(len(cls.questions)): question})
 
         cls.built = True
 
     @classmethod
     def exist_question(cls, scene):
-        args = cls.args
-        if np.random.randint(2) == 1 or\
-                args.toy_names < 3*args.toy_objects:
-            obj = np.random.randint(args.toy_names)
-        else:
-            obj = scene.gt_classes[np.random.randint(args.toy_objects)]
-        answer = 'yes' if obj in scene.gt_classes.tolist() else 'no'
-        which = str(scene.gt_classes.tolist().index(obj))\
-            if answer == 'yes' else '-'
-        cls_name = cls.classes[obj]
+        # filter-exist questions
+        info = cls.info
+        queried = np.random.choice(info.vocabulary['total'], 1)[0]
+        which, answer = cls.filter_objects(scene, queried)
+
         question = {
-            'question': 'Are there any %s in the image?' % cls_name,
+            'question': 'Are there any %s objects in the image?' % queried,
             'semantic': [
-                {'operation': 'select', 'argument': '{0} ({1})'.format(cls_name, which),
-                 'dependencies': []},
+                {'operation': 'select', 'argument': '{0} ({1})'.format(queried, ', '.join(which)),
+                'dependencies': []},
                 {'operation': 'exist', 'argument': '?',
-                 'dependencies': [0]}
+                'dependencies': [0]}
             ],
             'answer': answer,
-            'imageId': scene.id
         }
+
         return question
 
     @classmethod
     def filter_question(cls, scene):
-        args = cls.args
-        obj = np.random.randint(args.toy_names)
-        attr = np.random.randint(args.toy_attributes)
-        answer = 'no'
-        which = '-'
-        for i in range(scene.gt_classes.shape[0]):
-            if scene.gt_classes[i] == obj:
-                which = i
-                if attr in scene.gt_attributes[i]:
-                    answer = 'yes'
-        cls_name = cls.classes[obj]
-        attr_name = cls.attributes[attr]
+        # filter-filter-exist questions
+        info = cls.info
+        cat_1, cat_2 = np.random.choice(info.vocabulary.records, 2, replace=False)
+        queried_1 = np.random.choice(info.vocabulary[cat_1], 1)[0]
+        queried_2 = np.random.choice(info.vocabulary[cat_2], 1)[0]
+        which_1, answer_1 = cls.filter_objects(scene, queried_1)
+        which_2, answer_2 = cls.filter_objects(scene, queried_2)
+        which_2 = list(set(which_1).intersection(set(which_2)))
+        answer = 'yes' if len(which_2) != 0 else 'no'
+
         question = {
-            'question': 'Are there any %s %s in the image?' % (attr_name, cls_name),
+            'question': 'Are there any %s %s objects in the image?' %
+            (queried_1, queried_2),
             'semantic': [
-                {'operation': 'select', 'argument': '{0} ({1})'.format(cls_name, which),
+                {'operation': 'select', 'argument': '{0} ({1})'.format(queried_1, ', '.join(which_1)),
                  'dependencies': []},
-                {'operation': 'filter', 'argument': attr_name,
+                {'operation': 'filter', 'argument': '{0} ({1})'.format(queried_2, ', '.join(which_2)),
                  'dependencies': [0]},
                 {'operation': 'exist', 'argument': '?',
                  'dependencies': [1]}
             ],
             'answer': answer,
-            'imageId': scene.id
         }
         return question
 
     @classmethod
+    def filter_objects(cls, scene, queried):
+        which = ['-']
+        answer = 'no'
+        for obj_id, obj in scene['objects'].items():
+            for at in obj.values():
+                if at == queried:
+                    if '-' in which:
+                        which.remove('-')
+                    which.append(obj_id)
+                    answer = 'yes'
+        return which, answer
+
+    @classmethod
     def query_question(cls, scene):
-        args = cls.args
-        which = np.random.randint(args.toy_objects)
-        cls_name = cls.classes[scene.gt_classes[which]]
-        for category, items in cls.categories.items():
-            answer = set(items).intersection(set(map(lambda x: cls.attributes[x], scene.gt_attributes[which].tolist())))
-            if len(answer) > 1:
-                raise Exception('more than one attribute in category')
-            elif len(answer) == 1:
-                answer = answer.pop()
-                break
-        if len(answer) == 0:
-            raise Exception('no attributes')
+        info = cls.info
+        found = False
+        obj_id = np.random.choice(list(scene['objects']), 1)[0]
+        obj = scene['objects'][obj_id]
+        cat_1, cat_2, cat_3, cat_4 = np.random.choice(info.vocabulary.records, 4, replace=False)
+        attr_1, attr_2, attr_3 = obj[cat_1], obj[cat_2], obj[cat_3]
+        which_1 = cls.filter_objects(scene, attr_1)[0]
+        which_2 = cls.filter_objects(scene, attr_2)[0]
+        which_2 = list(set(which_1).intersection(set(which_2)))
+        which_3 = cls.filter_objects(scene, attr_3)[0]
+        which_3 = list(set(which_2).intersection(set(which_3)))
+        answer = obj[cat_4]
+        if len(set(which_1).intersection(set(which_2)).intersection(set(which_3))) == 1:
+            found = True
+        if not found:
+            return None
+
         question = {
-            'question': 'What is the %s of %s in the image' % (category, cls_name),
+            'question': 'What is the %s of the %s, %s, %s objects in the image'
+                % (cat_4, attr_1, attr_2, attr_3),
             'semantic': [
-                {'operation': 'select', 'argument': '{0} ({1})'.format(cls_name, which),
+                {'operation': 'select',
+                 'argument': '{0} ({1})'.format(attr_1, ', '.join(which_1)),
                  'dependencies': []},
-                {'operation': 'query', 'argument': category,
-                 'dependencies': [0]}
+                {'operation': 'filter',
+                 'argument': '{0} ({1})'.format(attr_2, ', '.join(which_2)),
+                 'dependencies': [0]},
+                {'operation': 'filter',
+                 'argument': '{0} ({1})'.format(attr_3, ', '.join(which_3)),
+                 'dependencies': [1]},
+                {'operation': 'query', 'argument': cat_4, 'dependencies': [2]},
             ],
             'answer': answer,
-            'imageId': scene.id
         }
         return question
 
-class ToyVisualDataset(Dataset):
-    def __init__(self, args, info=None):
-        self.args = args
-        self.info = info
-        self.dataset = ToyDataset(args, info)
+    @classmethod
+    @property
+    def image_ids(cls):
+        return list(cls.sceneGraphs)
 
-    def __getitem__(self, index_):
-        if isinstance(index_, int):
-            index = self.dataset.entries[index_]
-        else:
-            index = index_
-        return self.dataset.sceneGraphs[index]
+
+class ToyVisualDataset(Dataset):
+    def __init__(self):
+        self.sceneGraphs = ToyDataset.sceneGraphs
+
+    def __getitem__(self, index):
+        return self.sceneGraphs[index]
 
     def __len__(self):
-        return self.args.size_toy
+        return len(self.sceneGraphs)
+
+    def items(self):
+        return self.sceneGraphs.items()
 
 class ToyQuestionDataset(Dataset):
-    def __init__(self, args, info=None):
-        self.args = args
-        self.info = info
-        self.dataset = ToyDataset(args, info)
+    def __init__(self):
+        self.questions = ToyDataset.questions
 
-    def __getitem__(self, index_):
-        if isinstance(index_, str):
-            index = self.dataset.entries.index(index_)
-        else:
-            index = index_
-        return self.dataset.questions[index]
+    def __getitem__(self, index):
+        return self.questions[index]
 
     def __len__(self):
-        return self.args.size_toy
+        return len(self.questions)
+
+    def items(self):
+        return self.questions.items()
