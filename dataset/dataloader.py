@@ -13,7 +13,7 @@ def get_dataloaders(args, dataset, info=None):
     train_loader = DataLoader(
         dataset=train_dataset,
         batch_size=args.batch_size * args.num_gpus,
-        shuffle=args.train_shuffle,
+        shuffle=not args.no_train_shuffle,
         **kwargs)
 
     val_loader = DataLoader(

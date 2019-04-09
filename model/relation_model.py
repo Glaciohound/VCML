@@ -5,14 +5,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
-#from numpy import random
+import torch.nn.init as init
 
 class RelationModel(nn.Module):
     def __init__(self, args, info=None):
         super(RelationModel, self).__init__()
         self.args = args
         self.info = info
+        self.build()
+        #self.init()
 
+    def build(self):
+        args = self.args
         self.attribute_embeddingIn = nn.Embedding(args.num_attributes, args.embed_dim)
         self.attribute_embeddingOut = nn.Embedding(args.num_attributes, args.embed_dim)
         self.attribute_embeddingId = nn.Embedding(args.num_attributes, args.identity_dim)
@@ -25,7 +29,7 @@ class RelationModel(nn.Module):
 
         self.embed_init = nn.Parameter(torch.randn(args.embed_dim))
         self.identity_init = nn.Parameter(torch.randn(args.identity_dim))
-        self.attention_init = nn.Parameter(torch.randn(args.attention_dim) + 1)
+        self.attention_init = nn.Parameter(torch.zeros(args.attention_dim), requires_grad=False)
 
         def build_mlp(dim_in, dim_hidden, dim_out, name):
             linear1 = nn.Linear(dim_in, dim_hidden)
@@ -43,6 +47,11 @@ class RelationModel(nn.Module):
                                   args.attention_dim,
                                   'meta')
 
+    def init(self):
+        for param in self.parameters():
+            if param.requires_grad:
+                init.normal_(param, 0.5, 0.1)
+
     def forward(self, data):
         args = self.args
         info = self.info
@@ -50,7 +59,7 @@ class RelationModel(nn.Module):
         num_objects = max([data.scene[i].shape[0] for i in range(batch_size)])
         dim_concept = num_objects + args.max_concepts
 
-        #is_mode = (data.program[:, :, 0] == info.protocol['operations', 'mode']).astype(int)
+        is_mode = (data.program[:, :, 0] == info.protocol['operations', 'mode']).astype(int)
         is_insert = (data.program[:, :, 0] == info.protocol['operations', 'insert']).astype(int)
         is_transfer = (data.program[:, :, 0] == info.protocol['operations', 'transfer']).astype(int)
 
@@ -82,59 +91,41 @@ class RelationModel(nn.Module):
 
         dendron = torch.cat((self.concept_embeddingIn.weight[None].repeat((batch_size, 1, 1)), objectsIn), 1)
         axon = torch.cat((self.concept_embeddingOut.weight[None].repeat((batch_size, 1, 1)), objectsOut), 1)
+        weight_matrix = torch.matmul(dendron, axon.transpose(2, 1))
         identity = torch.cat((self.concept_embeddingId.weight[None].repeat((batch_size, 1, 1)), objectsId), 1)
+
         meta = self.attention_init[None].repeat((batch_size, 1))
+        attention = self.attention_init[None, None].repeat((batch_size, dim_concept, 1))
 
-        attention = (self.attention_init*0)[None, None].repeat((batch_size, dim_concept, 1))
         arguments = self.concept_embeddingOut(torch.LongTensor(data.program[:, :, 1]).to(info.device))
-
         max_program_length = data.program.shape[1]
         history = []
-        for i in range(max_program_length):
-            '''
-            attention_scalar = attention.abs().sum(2)
-            normalize = lambda x: x/x.sum()
-            selected = np.stack([
-                random.choice(np.arange(args.max_concepts),
-                              args.size_attention,
-                              p=normalize(attention_scalar[i, :args.max_concepts]\
-                                          .cpu().detach().numpy()))
-                for i in range(batch_size)
-            ])
-            def get_selected(original):
-                return torch.stack([
-                    original[i, selected[i]] for i in range(batch_size)
-                ])
-            attention_selected = get_selected(attention)
-            thoughtOut_selected = get_selected(thoughtOut)
-            '''
 
-            #is_mode_ = torch.Tensor(is_mode[:, i, None]).to(info.device)
+        for i in range(max_program_length):
+            is_mode_ = torch.Tensor(is_mode[:, i, None]).to(info.device)
             is_insert_ = torch.Tensor(is_insert[:, i, None, None]).to(info.device)
             is_transfer_ = torch.Tensor(is_transfer[:, i, None, None]).to(info.device)
 
-            #new_meta = self.meta_mlp(torch.cat((meta, arguments[:, i]), 1))
-            #meta = is_mode_ * new_meta + (1-is_mode_) * meta
+            new_meta = self.meta_mlp(torch.cat((meta, arguments[:, i]), 1))
+            meta = is_mode_ * new_meta + (1-is_mode_) * meta
             meta_broadcast = meta[:, None].repeat((1, dim_concept, 1))
             attention_insert = meta_broadcast * (arguments[:, i, None] * axon).mean(2)[:, :, None]
 
-            message_transfer = torch.Tensor(axon.shape[:2] + (args.identity_dim + args.attention_dim,))
-            activated_axon = attention.mean(2)[:, :, None] * axon
-
             identity_attention = torch.cat([identity, attention], 2)
-            for j in range(batch_size):
-                input_weight = torch.matmul(dendron[j], activated_axon[j].transpose(1, 0))
-                input_weight = torch.clamp(input_weight / dim_concept, -2, 2)
-                message_transfer[j] = torch.matmul(input_weight, identity_attention[j]) / dim_concept
-            message_transfer = message_transfer.to(info.device)
-            attention_transfer = self.axon_mlp(message_transfer) + message_transfer[:, :, args.identity_dim:]
-            #attention_transfer = message_transfer[:, :, args.embed_dim:]
+
+            attended_weight = weight_matrix * attention.mean(2)[:, None]
+            gathered = (attended_weight[:, :, :, None] * identity_attention[:, None]).mean(2)
+
+            attention_transfer = self.axon_mlp(gathered) + gathered[:, :, args.identity_dim:]
 
             attention = attention + is_insert_ * attention_insert + is_transfer_ * attention_transfer
-            #attention = is_insert_ * attention_insert + is_transfer_ * attention_transfer
-            attention = torch.relu(attention)
-            history.append(attention)
+            #attention = (1-is_insert_-is_transfer_) * attention + is_insert_ * attention_insert + is_transfer_ * attention_transfer
+            attention = torch.clamp(F.leaky_relu(attention), -5, 20)
+            history.append({'attention': attention.data, 'insert': attention_insert.data,
+                            'transfer': attention_transfer.data})
+
+        history = {k: torch.stack([item[k] for item in history]) for k in history[0].keys()}
 
         output_length = attention.mean(2)
         output_softmax = F.log_softmax(output_length, 1)
-        return output_softmax, torch.stack(history)
+        return output_softmax, history

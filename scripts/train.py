@@ -8,6 +8,7 @@ if os.getcwd().endswith('scripts'):
 from IPython import embed
 import torch
 from tqdm import tqdm
+#import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from config import Config
@@ -35,28 +36,26 @@ def run_batch(args, info, data):
 
 def train_epoch(args, info):
     info.model.train()
-    pbar = tqdm(total=len(info.train))
-    recording = Recording(args, info, ['loss', 'accuracy', 'yes', 'no'], mode='decaying')
-    for data in info.train:
+    info.pbar.write('epoch {}'.format(info.epoch))
+    recording = info.train_recording
+    for data in tqdm(info.train):
         info.optimizer.zero_grad()
         recording.update(run_batch(args, info, data))
         recording.previous['loss'].backward(retain_graph=True)
         info.optimizer.step()
 
         info.pbar.set_description(str(recording))
-        pbar.update()
 
-    info.pbar.write('[TRAIN] ' + str(recording))
-    pbar.close()
+    info.pbar.write('[TRAIN]\t' + str(recording))
 
 
 def val_epoch(args, info):
     info.model.eval()
-    recording = Recording(args, info, ['loss', 'accuracy', 'yes', 'no'], mode='average')
+    recording = info.val_recording
     for data in tqdm(info.val):
         recording.update(run_batch(args, info, data))
 
-    info.pbar.write('[VAL]' + str(recording))
+    info.pbar.write('[VAL]\t%s' % str(recording))
 
 
 def main():
@@ -80,22 +79,19 @@ def main():
     info.pbar = tqdm(total=args.epochs)
     info.ipython = False
     info.timestamp = [('start', time(), 0)]
-    info.log = []
+    info.log = {}
     info.visual_dataset.to_mode(
         'features' if args.task.endswith('pt') else
         'encoded_sceneGraphs'
     )
+    info.train_recording = Recording(args, info, ['loss', 'accuracy', 'yes', 'no'], name='train', mode='decaying')
+    info.val_recording = Recording(args, info, ['loss', 'accuracy', 'yes', 'no'], name='val', mode='average')
 
-    for epoch in range(1, args.epochs + 1):
+    for info.epoch in range(1, args.epochs + 1):
         train_epoch(args, info)
         val_epoch(args, info)
+        info.val_recording.clear()
         info.pbar.update()
-        if args.name:
-            torch.save({
-                'epoch': epoch,
-                'net_dict': info.model.state_dict(),
-                'optimizer': info.optimizer.state_dict(),
-            }, '{}.tar'.format(args.name))
     info.pbar.close()
     embed()
 

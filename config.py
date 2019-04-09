@@ -47,7 +47,7 @@ class Config:
 
         parser.add_argument('--allow_output_protocol', action='store_true')
         parser.add_argument('--toy_objects', type=int, default=3)
-        parser.add_argument('--toy_attributes', type=int, default=9)
+        parser.add_argument('--toy_attributes', type=int, default=10)
         parser.add_argument('--toy_attributesPobject', type=int,
                             default=3)
         parser.add_argument('--toy_categories', type=int, default=3)
@@ -61,7 +61,7 @@ class Config:
         parser.add_argument('--image_scale', type=int, default=592)
 
         parser.add_argument('--num_workers', default=1)
-        parser.add_argument('--train_shuffle', action='store_true')
+        parser.add_argument('--no_train_shuffle', action='store_false')
         parser.add_argument('--mode', default='concept-net',
                             choices=['concept-net'])
         parser.add_argument('--batch_size', type=int, default=10, metavar='N',
@@ -69,13 +69,16 @@ class Config:
         parser.add_argument('--epochs', type=int, default=20, metavar='N',
                             help='number of epochs to train (default: 10)')
         parser.add_argument('--lr', type=float, default=0.003, metavar='LR')
+        parser.add_argument('--grad_clip', type=float, default=1)
         parser.add_argument('--loss', type=str, default='mse',
                             choices=['mse', 'weighted', 'first', 'last'])
         parser.add_argument('--curriculum_learning', action='store_true')
         parser.add_argument('--perfect_th', type=float, default=0.05)
+        parser.add_argument('--visualize_dir', type=str, default='../../data/visualize/relation_net')
+        parser.add_argument('--visualize_time', type=int, default=50)
 
         parser.add_argument('--ckpt', type=str)
-        parser.add_argument('--name', type=str)
+        parser.add_argument('--name', type=str, default='trial')
 
         parser.add_argument('--max_relations', type=int, default=100)
         parser.add_argument('--max_concepts', type=int, default=50)
@@ -88,17 +91,27 @@ class Config:
                             choices=['None', 'existance'])
 
         parser.add_argument('--embed_dim', type=int, default=50)
-        parser.add_argument('--identity_dim', type=int, default=10)
+        parser.add_argument('--identity_dim', type=int, default=50)
         parser.add_argument('--hidden_dim', type=int, default=100)
         parser.add_argument('--attention_dim', type=int, default=5)
         parser.add_argument('--operation_dim', type=int, default=3)
         parser.add_argument('--feature_dim', type=int, default=512)
         parser.add_argument('--size_attention', type=int, default=30)
 
+        parser.add_argument('--isinstance_mode', type=str, default='color_1',
+                            choices=['color_1', 'any_1', 'shape_cat', 'any_cat'])
+        parser.add_argument('--isinstance_hidden_dim', type=int, default=3)
+        parser.add_argument('--isinstance_size', type=int, default=10)
+        parser.add_argument('--isinstance_length_epoch', type=int, default=10000)
+        parser.add_argument('--isinstance_epochs', type=int, default=100)
+
         return parser.parse_args()
 
     def post_process(self):
         dicts = self.__dict__
+        self.visualize_dir = os.path.join(self.visualize_dir, self.name)
+        if not os.path.exists(self.visualize_dir):
+            os.makedirs(self.visualize_dir)
         self.num_gpus = torch.cuda.device_count()
         self.use_cuda = self.num_gpus > 0
         self.info.device = torch.device('cuda' if self.use_cuda else 'cpu')
