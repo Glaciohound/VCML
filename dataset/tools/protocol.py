@@ -23,6 +23,21 @@ class Protocol:
         else:
             self.records2idx = {k: i for i, k in enumerate(self.records_['total'])}
 
+    def reset(self):
+        self.records_ = {}
+        if os.path.exists(self.protocol_file):
+            with open(self.protocol_file, 'r') as f:
+                self.records_ = json.load(f)
+        else:
+            if self.gather:
+                self.records_['total'] = []
+
+        if not self.gather:
+            self.records2idx = {key: {k: i for i, k in enumerate(self.records_[key])}
+                                for key in self.records_}
+        else:
+            self.records2idx = {k: i for i, k in enumerate(self.records_['total'])}
+
     def __getitem__(self, query):
         if isinstance(query, tuple):
             category, item = query

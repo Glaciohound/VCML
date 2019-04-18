@@ -19,7 +19,7 @@ class Dataset(torch.utils.data.Dataset):
         self.info = info
         self.args = args
         self.mode = mode
-        self.valid_modes = ['sceneGraphs', 'encoded_sceneGraphs', 'features']
+        self.valid_modes = ['sceneGraphs', 'encoded_sceneGraphs', 'pretrained', 'recognized']
 
         print('loading sceneGraphs ... ')
         self.load_graphs()
@@ -80,8 +80,10 @@ class Dataset(torch.utils.data.Dataset):
                 return self.sceneGraphs[index]
             elif self.mode == 'encoded_sceneGraphs':
                 return self.encode_sceneGraphs(self.sceneGraphs[index])
-            else:
+            elif self.mode == 'pretrained':
                 return self.get_features(self.sceneGraphs[index])
+            elif self.mode == 'recognized':
+                raise Exception('not implemented yet')
 
 
     def load_graphs(self):

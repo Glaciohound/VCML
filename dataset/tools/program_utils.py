@@ -1,6 +1,37 @@
-# TODO providing ground truth of the execution
+def preprocess_operation(cur):
+    operation = cur['operation']
+    category = None
+    if ' ' in operation:
+        splits = operation.split(' ')
+        if len(splits) > 2:
+            operation = splits[0]
+            #category = ''.join([splits[1]] + [s[0].upper()+s[1:] for s in splits[2:]])
+            category = '_'.join(splits[1:])
+        else:
+            operation, category = splits
+    if category == 'rel':
+        category = 'relation'
 
-def semantic2list(program_list):
+    argument = cur['argument']
+    if ' (' in argument:
+        argument, obj = argument.split(' (')
+        obj = obj.split(')')[0].split(',')
+    elif argument=='scene':
+        obj = 'scene'
+    else:
+        obj = None
+
+    argument = argument[:-1] if argument.endswith(' ') else argument
+    if argument == '' and not operation in ['and', 'or', 'same', 'different']:
+        argument = 'scene'
+    elif argument == '?':
+        argument = ''
+    elif ' ' in argument:
+        argument = argument.replace(' ', '_')
+
+    return operation, category, argument, obj
+
+def semantic2program_r(program_list):
     result = []
 
     def set_scene():
@@ -101,36 +132,10 @@ def semantic2list(program_list):
         set_insert(another)
 
     def build_list(cur):
-        operation = cur['operation']
-        category = None
-        if ' ' in operation:
-            splits = operation.split(' ')
-            if len(splits) > 2:
-                operation = splits[0]
-                #category = ''.join([splits[1]] + [s[0].upper()+s[1:] for s in splits[2:]])
-                category = '_'.join(splits[1:])
-            else:
-                operation, category = splits
-        if category == 'rel':
-            category = 'relation'
+        operation, category, argument, obj = preprocess_operation(cur)
 
         for i in cur['dependencies']:
             build_list(program_list[i])
-
-        argument = cur['argument']
-        if ' (' in argument:
-            argument, obj = argument.split(' (')
-            obj = obj.split(')')[0].split(',')
-        elif argument=='scene':
-            obj = 'scene'
-        argument = argument[:-1] if argument.endswith(' ') else argument
-        if argument == '' and not operation in ['and', 'or', 'same', 'different']:
-            argument = 'scene'
-        elif argument == '?':
-            argument = ''
-        elif ' ' in argument:
-            argument = argument.replace(' ', '_')
-
 
         if argument.startswith('not('):
             # not filter operations
@@ -221,3 +226,82 @@ def function2compactStr(f):
         ', ' if f['argument'] else '',
         f['argument'],
     )
+
+def semantic2program_u(program_list):
+
+    output = []
+    def add_operation(x, y):
+        output.append({'operation': x,
+                       'argument': y})
+
+    def convert_operation(x):
+        output[-1]['operation'] = x
+
+    for op in program_list:
+        operation, category, argument, obj = preprocess_operation(op)
+
+        if operation == 'select':
+            add_operation('transfer', 'object_only')
+            add_operation('verify', argument)
+
+        elif operation == 'filter':
+            add_operation('verify', argument)
+
+        elif operation == 'query':
+            add_operation('transfer', argument)
+
+        elif operation == 'exist':
+            convert_operation('transfer')
+
+        elif operation == 'select_concept':
+            add_operation('transfer', 'concept_only')
+            add_operation('verify', argument)
+
+        elif operation == 'synonym':
+            add_operation('transfer', 'synonym')
+            add_operation('transfer', argument)
+
+        else:
+            raise Exception('no such operation supported {}'.format(op))
+
+    return output
+
+def semantic2program_h(program_list):
+
+    output = []
+    def add_operation(x, y):
+        output.append({'operation': x,
+                       'argument': y})
+
+    def convert_operation(x):
+        output[-1]['operation'] = x
+
+    for op in program_list:
+        operation, category, argument, obj = preprocess_operation(op)
+
+        if operation == 'select':
+            add_operation('select', 'object_only')
+            add_operation('verify', argument)
+
+        elif operation == 'select_concept':
+            add_operation('select', 'concept_only')
+            add_operation('choose', argument)
+
+        elif operation == 'filter':
+            add_operation('verify', argument)
+
+        elif operation == 'query':
+            add_operation('transfer', argument)
+
+        elif operation == 'exist':
+            add_operation('exist', '<NULL>')
+
+        elif operation == 'synonym':
+            add_operation('transfer', 'synonym')
+            add_operation('verify', argument)
+            add_operation('exist', '<NULL>')
+
+        else:
+            raise Exception('no such operation supported {}'.format(op))
+
+    return output

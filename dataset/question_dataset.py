@@ -22,23 +22,28 @@ class Dataset(torch.utils.data.Dataset):
         info.question_dataset = cls()
 
     def __getitem__(self, index_):
+        args = self.args
         if isinstance(index_, str):
             index_ = self.index.index(index_)
         index = self.index[index_]
 
         question = self.questions[index]
-        program = program_utils.semantic2list(question['semantic']) if 'semantic' in question else []
+        program_translator = program_utils.semantic2program_r if args.model == 'relation_model'\
+            else program_utils.semantic2program_u if args.model == 'u_embedding'\
+            else program_utils.semantic2program_h
+        program = program_translator(question['semantic']) if 'semantic' in question else []
         question_encoded = question_utils.encode_question(question['question'], self.info.protocol)
         program_encoded = np.array(
             [[self.info.protocol['operations', op['operation']],
-              self.info.protocol['concepts', op['argument']]]
-             for op in program])
+            self.info.protocol['concepts', op['argument']]]
+            for op in program])
         scene = self.info.visual_dataset[question['image_id']] if hasattr(self.info, 'visual_dataset') else None
         answer = question['answer']
         answer_encoded = self.info.protocol['concepts', answer]
 
         entry = {
             'index': index,
+            'type': question['type'],
             'question': question['question'] if not self.info.compact_data else question_encoded,
             'scene': scene,
             'program': program if not self.info.compact_data else program_encoded,
@@ -73,6 +78,8 @@ class Dataset(torch.utils.data.Dataset):
         cls.split_indexes = {key: [q_id for q_id, q in cls.questions.items()
                                     if q['split']==key]
                                 for key in ['train', 'test', 'val']}
+        cls.types = set(q['type'] for q in cls.questions.values()
+                        if 'type' in q)
 
     def to_split(self, split):
         self.split = split
@@ -152,3 +159,14 @@ class Dataset(torch.utils.data.Dataset):
                       float(output[i, object_sort[i, j]+cls.args.max_concepts])
                       for j in range(min(num, object_sort.shape[1]))}}
                      for i in range(output.shape[0])]
+
+    def get_names(self):
+        info = self.info
+        names = []
+        for cat, attributes in info.vocabulary.records_.items():
+            if not cat == 'total':
+                for y in attributes:
+                    for x in info.protocol['concepts']:
+                        if y in x and x not in names:
+                            names.append(x)
+        return names

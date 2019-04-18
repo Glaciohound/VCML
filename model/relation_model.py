@@ -38,10 +38,12 @@ class RelationModel(nn.Module):
             setattr(self, name+'_linear2', linear2)
             return lambda x: linear2(torch.relu(linear1(x)))
 
-        self.axon_mlp = build_mlp(args.attention_dim+args.identity_dim,
+        self.axon_mlp = build_mlp(args.attention_dim+args.identity_dim if not args.identity_only\
+                                  else args.identity_dim,
                                   args.hidden_dim,
                                   args.attention_dim,
                                   'axon')
+
         self.meta_mlp = build_mlp(args.embed_dim+args.attention_dim,
                                   args.hidden_dim,
                                   args.attention_dim,
@@ -111,16 +113,20 @@ class RelationModel(nn.Module):
             meta_broadcast = meta[:, None].repeat((1, dim_concept, 1))
             attention_insert = meta_broadcast * (arguments[:, i, None] * axon).mean(2)[:, :, None]
 
-            identity_attention = torch.cat([identity, attention], 2)
-
             attended_weight = weight_matrix * attention.mean(2)[:, None]
-            gathered = (attended_weight[:, :, :, None] * identity_attention[:, None]).mean(2)
 
-            attention_transfer = self.axon_mlp(gathered) + gathered[:, :, args.identity_dim:]
+            if not args.identity_only:
+                identity_attention = torch.cat([identity, attention], 2)
+                gathered = (attended_weight[:, :, :, None] * identity_attention[:, None]).mean(2)
+                attention_transfer = self.axon_mlp(gathered) + gathered[:, :, args.identity_dim:]
+            else:
+                gathered = (attended_weight[:, :, :, None] * identity[:, None]).mean(2)
+                attention_transfer = self.axon_mlp(gathered)
+
 
             attention = attention + is_insert_ * attention_insert + is_transfer_ * attention_transfer
             #attention = (1-is_insert_-is_transfer_) * attention + is_insert_ * attention_insert + is_transfer_ * attention_transfer
-            attention = torch.clamp(F.leaky_relu(attention), -5, 20)
+            attention = torch.clamp(F.leaky_relu(attention), -1, 2)
             history.append({'attention': attention.data, 'insert': attention_insert.data,
                             'transfer': attention_transfer.data})
 

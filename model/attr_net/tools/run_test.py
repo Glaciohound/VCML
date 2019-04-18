@@ -7,9 +7,7 @@ from model import get_model
 import utils
 from tqdm import tqdm
 
-
 COMP_CAT_DICT_PATH = 'tools/clevr_comp_cat_dict.json'
-
 
 opt = get_options('test')
 test_loader = get_dataloader(opt, 'test')
@@ -32,6 +30,7 @@ for data, _, idxs, cat_idxs in tqdm(test_loader):
     model.set_input(data)
     model.forward()
     pred, features = model.get_pred(get_feature=True)
+    from IPython import embed; embed()
     for i in range(pred.shape[0]):
         if opt.dataset == 'clevr':
             img_id = idxs[i]
