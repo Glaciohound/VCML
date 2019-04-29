@@ -276,30 +276,36 @@ def semantic2program_h(program_list):
     def convert_operation(x):
         output[-1]['operation'] = x
 
+    def add_verify(op, arg):
+        add_operation('transfer', op)
+        add_operation('verify', arg)
+        add_operation('exist', '<NULL>')
+
     for op in program_list:
         operation, category, argument, obj = preprocess_operation(op)
 
         if operation == 'select':
             add_operation('select', 'object_only')
-            add_operation('verify', argument)
+            add_operation('filter', argument)
 
         elif operation == 'select_concept':
             add_operation('select', 'concept_only')
             add_operation('choose', argument)
 
         elif operation == 'filter':
-            add_operation('verify', argument)
+            add_operation('filter', argument)
 
         elif operation == 'query':
             add_operation('transfer', argument)
 
+        elif operation == 'isinstance':
+            add_operation('transfer', operation)
+
         elif operation == 'exist':
             add_operation('exist', '<NULL>')
 
-        elif operation == 'synonym':
-            add_operation('transfer', 'synonym')
-            add_operation('verify', argument)
-            add_operation('exist', '<NULL>')
+        elif operation in ['synonym', 'antonym']:
+            add_verify(operation, argument)
 
         else:
             raise Exception('no such operation supported {}'.format(op))

@@ -3,10 +3,13 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
+args = sys.args
+info = sys.info
 
 class Recording:
     length_limit = 70
-    def __init__(self, args, info, name='anonymous', mode='average', momentum=0.99):
+    def __init__(self, name='anonymous', mode='average', momentum=0.99):
         self.args = args
         self.info = info
         self.values = {}
@@ -54,6 +57,10 @@ class Recording:
         for key, values in self.history.items():
             fig, axes = plt.subplots(1)
             axes.plot(values)
+            if 'loss' in key:
+                axes.set_yscale('log')
+            else:
+                axes.set_yscale('linear')
             fig.savefig(os.path.join(self.args.visualize_dir,
                                      '{}_{}.jpg'.format(self.name, key)))
             plt.close(fig)

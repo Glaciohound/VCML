@@ -1,6 +1,7 @@
 import json
 import os
 from dataset.tools import question_utils
+import copy
 
 class Protocol:
     def __init__(self, allow_output_protocol, protocol_file, gather=False, use_special_tokens=True):
@@ -93,7 +94,12 @@ class Protocol:
 
     @property
     def records(self):
-        output = list(self.records_)
-        if self.gather:
-            output.remove('total')
-        return output
+        return {k:v for k, v in self.records_.items()
+                if k!='total'}
+
+    def belongs_to(self, name):
+        cats = [cat for cat in self.records if name in self[cat]]
+        if len(cats) > 1:
+            raise Exception('%s belongs to multiple categories')
+        else:
+            return cats[0]

@@ -12,12 +12,12 @@ from tqdm import tqdm
 from dataset.tools import protocol
 from glob import glob
 from dataset.toy import teddy_dataset
-
+import sys
+args = sys.args
+info = sys.info
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, args, info=None, mode='sceneGraphs'):
-        self.info = info
-        self.args = args
+    def __init__(self, mode='sceneGraphs'):
         self.mode = mode
         self.valid_modes = ['sceneGraphs', 'encoded_sceneGraphs', 'pretrained', 'recognized']
 
@@ -33,7 +33,6 @@ class Dataset(torch.utils.data.Dataset):
         self.transform_pipeline = Compose(tform)
 
     def __getitem__(self, index):
-        args = self.args
         if not isinstance(index, str):
             index = self.index[index]
 
@@ -87,8 +86,6 @@ class Dataset(torch.utils.data.Dataset):
 
 
     def load_graphs(self):
-        args = self.args
-        info = self.info
         if args.group in ['gqa', 'clevr']:
             info.vocabulary = protocol.Protocol(args.allow_output_protocol,
                                                 args.vocabulary_file,
@@ -167,7 +164,6 @@ class Dataset(torch.utils.data.Dataset):
                                             info.vocabulary[cat, attr]
 
         elif args.task == 'toy':
-            teddy_dataset.ToyDataset.init(args, info)
             teddy_dataset.ToyDataset.build_visual_dataset()
             self.sceneGraphs = teddy_dataset.ToyVisualDataset()
 
@@ -193,14 +189,14 @@ class Dataset(torch.utils.data.Dataset):
             raise Exception('invalid mode: %s' % mode)
 
     @classmethod
-    def get_datasets(cls, args):
-        base_dataset = cls(args)
+    def get_datasets(cls):
+        base_dataset = cls()
         train, val, test = [deepcopy(base_dataset).to_split(s)
                             for s in ['train', 'val', 'test']]
         return train, val, test
 
     def __len__(self):
-        return min(len(self.index), self.args.max_sizeDataset)
+        return min(len(self.index), args.max_sizeDataset)
 
     def items(self):
         return self.sceneGraphs.items()
@@ -222,7 +218,7 @@ class Dataset(torch.utils.data.Dataset):
         features = []
         for obj in scene['objects'].values():
             features.append([
-                self.info.vocabulary[at] for cat, at in obj.items()
+                info.vocabulary[at] for cat, at in obj.items()
                 if isinstance(at, str)
             ])
         dim_features = max([len(x) for x in features])

@@ -4,6 +4,9 @@ import numpy as np
 from argparse import Namespace
 from dataset.tools import program_utils, question_utils, protocol
 from dataset.toy import teddy_dataset
+import sys
+args = sys.args
+info = sys.info
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -11,18 +14,15 @@ class Dataset(torch.utils.data.Dataset):
         pass
 
     @classmethod
-    def init(cls, args, info):
+    def init(cls):
         if not hasattr(info, 'compact_data'):
             info.compact_data = False
-        cls.args = args
-        cls.info = info
         cls.program_utils = program_utils
         info.protocol = protocol.Protocol(args.allow_output_protocol, args.protocol_file)
         cls.load_questions()
         info.question_dataset = cls()
 
     def __getitem__(self, index_):
-        args = self.args
         if isinstance(index_, str):
             index_ = self.index.index(index_)
         index = self.index[index_]
@@ -32,30 +32,27 @@ class Dataset(torch.utils.data.Dataset):
             else program_utils.semantic2program_u if args.model == 'u_embedding'\
             else program_utils.semantic2program_h
         program = program_translator(question['semantic']) if 'semantic' in question else []
-        question_encoded = question_utils.encode_question(question['question'], self.info.protocol)
+        question_encoded = question_utils.encode_question(question['question'], info.protocol)
         program_encoded = np.array(
-            [[self.info.protocol['operations', op['operation']],
-            self.info.protocol['concepts', op['argument']]]
+            [[info.protocol['operations', op['operation']],
+            info.protocol['concepts', op['argument']]]
             for op in program])
-        scene = self.info.visual_dataset[question['image_id']] if hasattr(self.info, 'visual_dataset') else None
+        scene = info.visual_dataset[question['image_id']] if hasattr(info, 'visual_dataset') else None
         answer = question['answer']
-        answer_encoded = self.info.protocol['concepts', answer]
+        answer_encoded = info.protocol['concepts', answer]
 
         entry = {
             'index': index,
             'type': question['type'],
-            'question': question['question'] if not self.info.compact_data else question_encoded,
+            'question': question['question'] if not info.compact_data else question_encoded,
             'scene': scene,
-            'program': program if not self.info.compact_data else program_encoded,
-            'answer': question['answer'] if not self.info.compact_data else answer_encoded,
+            'program': program if not info.compact_data else program_encoded,
+            'answer': question['answer'] if not info.compact_data else answer_encoded,
         }
         return entry
 
     @classmethod
     def load_questions(cls):
-        args = cls.args
-        info = cls.info
-        teddy_dataset.ToyDataset.init(args, info)
 
         if args.task in ['toy', 'clevr_pt']:
             if args.task == 'clevr_pt':
@@ -87,8 +84,8 @@ class Dataset(torch.utils.data.Dataset):
         return self
 
     @classmethod
-    def get_datasets(cls, args, info):
-        cls.init(args, info)
+    def get_datasets(cls):
+        cls.init()
         train, val, test = [cls().to_split(s)
                             for s in ['train', 'val', 'test']]
         for dataset in [train, val, test]:
@@ -97,7 +94,7 @@ class Dataset(torch.utils.data.Dataset):
         return train, val, test
 
     def __len__(self):
-        return min(len(self.index), self.args.max_sizeDataset)
+        return min(len(self.index), args.max_sizeDataset)
 
     def assertion_checks(self, entry):
         pass
@@ -105,8 +102,10 @@ class Dataset(torch.utils.data.Dataset):
     @classmethod
     def collate(cls, data):
         output = Namespace()
-        protocol = cls.info.protocol
-        if cls.info.compact_data:
+        protocol = info.protocol
+        if not isinstance(data, list):
+            data = [data]
+        if info.compact_data:
             max_quesiton_length = max([s['question'].shape[0] for s in data])
             max_program_length = max([s['program'].shape[0] for s in data])
             question_template = np.array([protocol['words', '<NULL>']
@@ -136,9 +135,9 @@ class Dataset(torch.utils.data.Dataset):
     def show_attended(cls, output, num=5):
         def get_concept(x):
             x = int(x)
-            if x < len(cls.info.protocol['concepts']):
-                return cls.info.protocol['concepts', x]
-            elif x < cls.args.max_concepts:
+            if x < len(info.protocol['concepts']):
+                return info.protocol['concepts', x]
+            elif x < args.max_concepts:
                 return 'unknown concept %d' % x
 
         def get_object(x):
@@ -148,25 +147,27 @@ class Dataset(torch.utils.data.Dataset):
             return [cls.show_attended(output[i])
                     for i in range(output.shape[0])]
         else:
-            concept_sort = output[:, :cls.args.max_concepts].argsort(-1, True)
-            object_sort = output[:, cls.args.max_concepts:].argsort(-1, True)
+            concept_sort = output[:, :args.max_concepts].argsort(-1, True)
+            object_sort = output[:, args.max_concepts:].argsort(-1, True)
             return [{'concepts':
                      {get_concept(concept_sort[i, j]):
                       float(output[i, concept_sort[i, j]])
                       for j in range(num)},
                      'objects':
                      {get_object(object_sort[i, j]):
-                      float(output[i, object_sort[i, j]+cls.args.max_concepts])
+                      float(output[i, object_sort[i, j]+args.max_concepts])
                       for j in range(min(num, object_sort.shape[1]))}}
                      for i in range(output.shape[0])]
 
     def get_names(self):
-        info = self.info
         names = []
         for cat, attributes in info.vocabulary.records_.items():
-            if not cat == 'total':
+            if cat != 'total':
                 for y in attributes:
                     for x in info.protocol['concepts']:
                         if y in x and x not in names:
                             names.append(x)
         return names
+
+    def get_data(self, index):
+        return self.collate(self[index])

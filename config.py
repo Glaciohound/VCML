@@ -3,12 +3,16 @@ import torch
 import os
 import shutil
 import pprint
+import sys
+
+class Info():
+    def __init__(self):
+        sys.__dict__.update({'info': self})
 
 class Config:
-    conceptual_tokens = {'synonym': '_syn', 'antonym': '_anto'}
-
-    def __init__(self, info):
-        self.info = info
+    conceptual_tokens = ['synonym', 'antonym', 'isinstance']
+    def __init__(self):
+        sys.__dict__.update({'args': self})
         args = self.parse_args()
         self.__dict__.update(vars(args))
         self.post_process()
@@ -26,8 +30,9 @@ class Config:
 
         parser.add_argument('--task', default='toy',
                             choices=['gqa', 'toy', 'clevr_pt', 'clevr_rc'])
-        parser.add_argument('--model', default='relation_model',
-                            choices=['relation_model', 'u_embedding', 'h_embedding'])
+        parser.add_argument('--model', default='h_embedding_add',
+                            choices=['relation_model', 'u_embedding',
+                                     'h_embedding_mul', 'h_embedding_add'])
         parser.add_argument('--similarity', default='cosine',
                             choices=['cosine', 'square'])
 
@@ -60,26 +65,32 @@ class Config:
 
         parser.add_argument('--subtask', default='exist',
                             choices=['exist', 'filter', 'query',
-                                     'exist_synonym', 'filter_synonym'])
+                                     'exist_synonym', 'filter_synonym',
+                                     'query_antonym', 'query_isinstance',
+                                     'query_isinstance_rev',
+                                     'visual_bias',
+                                     'filter_isinstance'])
         parser.add_argument('--questionsPimage', type=int, default=1)
 
-        parser.add_argument('--max_sizeDataset', type=int, default=20000)
+        parser.add_argument('--max_sizeDataset', type=int, default=5000)
         parser.add_argument('--box_scale', type=int, default=1024)
         parser.add_argument('--image_scale', type=int, default=592)
+        parser.add_argument('--ipython', action='store_true')
 
-        parser.add_argument('--num_workers', default=1)
-        parser.add_argument('--no_train_shuffle', action='store_false')
-        parser.add_argument('--mode', default='concept-net',
-                            choices=['concept-net'])
         parser.add_argument('--batch_size', type=int, default=10, metavar='N',
                             help='input batch size for training (default: 64)')
         parser.add_argument('--epochs', type=int, default=30, metavar='N',
                             help='number of epochs to train (default: 10)')
         parser.add_argument('--lr', type=float, default=0.001, metavar='LR')
-        parser.add_argument('--grad_clip', type=float, default=1)
+        parser.add_argument('--temperature', type=float, default=1)
+        parser.add_argument('--non_bool_weight', type=float, default=1)
         parser.add_argument('--init_variance', type=float, default=0.01)
-        parser.add_argument('--loss', type=str, default='mse',
-                            choices=['mse', 'weighted', 'first', 'last'])
+        parser.add_argument('--loss', type=str, default='cross_entropy',
+                            choices=['mse', 'binary', 'cross_entropy'])
+        parser.add_argument('--num_workers', default=1)
+        parser.add_argument('--no_train_shuffle', action='store_false')
+        parser.add_argument('--mode', default='concept-net',
+                            choices=['concept-net'])
         parser.add_argument('--curriculum_learning', action='store_true')
         parser.add_argument('--perfect_th', type=float, default=0.05)
         parser.add_argument('--visualize_dir', type=str,
@@ -87,9 +98,9 @@ class Config:
         parser.add_argument('--ckpt_dir', type=str,
                             default='../../data/gqa/checkpoints')
         parser.add_argument('--visualize_time', type=int, default=500)
-        parser.add_argument('--no_validation', action='store_true')
-        parser.add_argument('--ipython', action='store_true')
 
+        parser.add_argument('--no_validation', action='store_true')
+        parser.add_argument('--no_random', action='store_true')
         parser.add_argument('--ckpt', type=str)
         parser.add_argument('--name', type=str, default='trial')
 
@@ -103,22 +114,15 @@ class Config:
         parser.add_argument('--question_filter', default='None',
                             choices=['None', 'existance'])
 
-        parser.add_argument('--embed_dim', type=int, default=50)
-        parser.add_argument('--rank', type=int, default=0)
+        parser.add_argument('--embed_dim', type=int, default=60)
         parser.add_argument('--identity_dim', type=int, default=50)
-        parser.add_argument('--hidden_dim', type=int, default=100)
+        parser.add_argument('--hidden_dim1', type=int, default=0)
+        parser.add_argument('--hidden_dim2', type=int, default=0)
         parser.add_argument('--attention_dim', type=int, default=5)
         parser.add_argument('--operation_dim', type=int, default=3)
         parser.add_argument('--feature_dim', type=int, default=512)
         parser.add_argument('--size_attention', type=int, default=30)
         parser.add_argument('--identity_only', action='store_true')
-
-        parser.add_argument('--isinstance_mode', type=str, default='color_1',
-                            choices=['color_1', 'any_1', 'shape_cat', 'any_cat'])
-        parser.add_argument('--isinstance_hidden_dim', type=int, default=3)
-        parser.add_argument('--isinstance_size', type=int, default=10)
-        parser.add_argument('--isinstance_length_epoch', type=int, default=10000)
-        parser.add_argument('--isinstance_epochs', type=int, default=100)
 
         parser.add_argument('--generalization_ratio', type=float, default=0.25)
         parser.add_argument('--conceptual_question_ratio', type=float, default=0.2)
@@ -134,8 +138,9 @@ class Config:
         os.makedirs(self.visualize_dir)
         self.num_gpus = torch.cuda.device_count()
         self.use_cuda = self.num_gpus > 0
-        self.info.device = torch.device('cuda' if self.use_cuda else 'cpu')
+        sys.info.device = torch.device('cuda' if self.use_cuda else 'cpu')
         self.toy_categories = min(self.toy_categories, self.toy_attributes)
+        self.toy_attributesPobject = min(self.toy_attributesPobject, self.toy_categories)
         self.load_by = 'question' if self.mode in ['concept-net']\
             else 'image'
         self.group = self.task.split('_')[0]
@@ -152,6 +157,16 @@ class Config:
                 self.conceptual = True
         if self.no_validation:
             self.generalization_ratio = 0
+        self.task_concepts = {}
+
+        def f_bool(x):
+            non_bool_postfixs = ['query']
+            for postfix in non_bool_postfixs:
+                if x.endswith(postfix):
+                    return False
+            return True
+        self.bool_question = f_bool
+
 
     def print(self):
         pprint.pprint('Arguments: ------------------------')

@@ -12,6 +12,7 @@ import os.path as osp
 
 import numpy as np
 import tensorflow as tf
+import torch
 
 from tensorflow.contrib.tensorboard.plugins import projector
 
@@ -26,6 +27,9 @@ def visualize_word_embedding_tb(emb, log_dir):
         embedding = np.array(emb[0])
     else:
         words = emb.keys()
+        for k, v in emb.items():
+            if isinstance(v, torch.Tensor):
+                emb[k] = v.cpu().detach().numpy()
         embedding = np.stack([emb[key] for key in words])
 
     # setup a TensorFlow session

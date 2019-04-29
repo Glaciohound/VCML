@@ -1,8 +1,11 @@
 from torch.utils.data import DataLoader
+import sys
+args = sys.args
+info = sys.info
 
 
-def get_dataloaders(args, dataset, info=None):
-    train_dataset, val_dataset, test_dataset = dataset.get_datasets(args, info)
+def get_dataloaders(dataset):
+    train_dataset, val_dataset, test_dataset = dataset.get_datasets()
 
     kwargs = {'num_workers': args.num_workers,
               'collate_fn': train_dataset.__class__.collate,
