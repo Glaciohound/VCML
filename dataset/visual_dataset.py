@@ -1,25 +1,24 @@
-import json, pickle
-import os
 import h5py as h5
 import numpy as np
 import torch
+import os
 from PIL import Image
 from torchvision.transforms import Resize, Compose, ToTensor, Normalize
 from copy import deepcopy
 from dataset.tools.image_transforms import SquarePad
+from dataset.tools import sceneGraph_port, image_utils
 from argparse import Namespace
 from tqdm import tqdm
 from dataset.tools import protocol
-from glob import glob
 from dataset.toy import teddy_dataset
 import sys
 args = sys.args
 info = sys.info
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, mode='sceneGraphs'):
+    def __init__(self, mode='sceneGraph'):
         self.mode = mode
-        self.valid_modes = ['sceneGraphs', 'encoded_sceneGraphs', 'pretrained', 'recognized']
+        self.valid_modes = ['sceneGraph', 'encoded_sceneGraph', 'pretrained', 'detected']
 
         print('loading sceneGraphs ... ')
         self.load_graphs()
@@ -36,7 +35,7 @@ class Dataset(torch.utils.data.Dataset):
         if not isinstance(index, str):
             index = self.index[index]
 
-        if args.task == 'gqa':
+        if args.group == 'gqa':
             image_unpadded = Image.open(self.filenames[index]).convert('RGB')
 
             w, h = image_unpadded.size
@@ -74,15 +73,23 @@ class Dataset(torch.utils.data.Dataset):
             self.assertion_checks(entry)
             return entry
 
-        else:
-            if self.mode == 'sceneGraphs':
-                return self.sceneGraphs[index]
-            elif self.mode == 'encoded_sceneGraphs':
-                return self.encode_sceneGraphs(self.sceneGraphs[index])
+        elif args.group in ['clevr', 'toy']:
+            if self.mode == 'sceneGraph':
+                return {'scene': self.sceneGraphs[index]}
+            elif self.mode == 'encoded_sceneGraph':
+                return {'scene':
+                        self.encode_sceneGraphs(self.sceneGraphs[index])}
             elif self.mode == 'pretrained':
-                return self.get_features(self.sceneGraphs[index])
-            elif self.mode == 'recognized':
-                raise Exception('not implemented yet')
+                return {'scene': self.get_features(self.sceneGraphs[index])}
+            elif self.mode == 'detected':
+                image = Image.open(self.sceneGraphs[index]['image_filename']).convert('RGB')
+                shape = image.size
+                image = self.transform_pipeline(image).numpy()
+                bboxes = image_utils.annotate_objects(self.sceneGraphs[index],
+                                                      shape, (args.image_scale, args.image_scale))['objects']
+                return {'image': image,
+                        'objects': bboxes,
+                        'objects_length': bboxes.shape[0]}
 
 
     def load_graphs(self):
@@ -130,42 +137,24 @@ class Dataset(torch.utils.data.Dataset):
             SG_h5.close()
 
         elif args.group == 'clevr':
-            self.filenames = glob(os.path.join(args.image_dir, '*/*'))
-            self.image_ids = [self.get_imageId(x) for x in self.filenames]
-            self.sceneGraphs = {image_id: {'split': image_id.split('_')[1], 'image_id': image_id}
-                                for image_id in self.image_ids}
+            self.sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
+            if args.task.endswith('pt'):
+                self.sceneGraphs = sceneGraph_port.merge_sceneGraphs(self.sceneGraphs,
+                                                                     sceneGraph_port.load_multiple_sceneGraphs(args.feature_sceneGraph_dir))
+            elif args.task.endswith('dt'):
+                all_imageNames = image_utils.get_imageNames(args.image_dir)
+                for imageName in all_imageNames:
+                    image_id, default_scene = sceneGraph_port.default_scene(imageName)
+                    if not image_id in self.sceneGraphs:
+                        self.sceneGraphs[image_id] = default_scene
+                    else:
+                        self.sceneGraphs[image_id].update(default_scene)
 
-            for key in ['train', 'val', 'test']:
-                if args.task.endswith('pt'):
-                    sceneGraph_pkl = os.path.join(args.pt_sceneGraph_dir, 'clevr_%s_scenes_parsed_pretrained.pkl' % key)
-                    if os.path.exists(sceneGraph_pkl):
-                        with open(sceneGraph_pkl, 'rb') as f:
-                            loaded = pickle.load(f)['scenes']
-                        for scene in loaded:
-                            image_id = self.get_imageId(scene['image_filename'])
-                            self.sceneGraphs[image_id]['features'] =\
-                                [obj['feature'] for obj in scene['objects']]
-
-                sceneGraph_json = os.path.join(args.sceneGraph_dir, 'CLEVR_%s_scenes.json' % key)
-                if os.path.exists(sceneGraph_json):
-                    with open(sceneGraph_json, 'r') as f:
-                        loaded = json.load(f)['scenes']
-                    for scene in loaded:
-                        image_id = self.get_imageId(scene['image_filename'])
-                        for k, v in scene.items():
-                            if k != 'objects':
-                                self.sceneGraphs[image_id][k] = v
-                            else:
-                                self.sceneGraphs[image_id]['objects'] =\
-                                    {str(i): obj for i, obj in enumerate(scene['objects'])}
-                                for obj in scene['objects']:
-                                    for cat, attr in obj.items():
-                                        if isinstance(attr, str):
-                                            info.vocabulary[cat, attr]
 
         elif args.task == 'toy':
             teddy_dataset.ToyDataset.build_visual_dataset()
-            self.sceneGraphs = teddy_dataset.ToyVisualDataset()
+            self.sceneGraphs = teddy_dataset.ToyVisualDataset().sceneGraphs
+            teddy_dataset.ToyDataset.load_visual_dataset(self)
 
         else:
             raise Exception('No such task supported: %s' % args.task)
@@ -173,9 +162,6 @@ class Dataset(torch.utils.data.Dataset):
         self.split_indexes = {key: [s for k, s in self.sceneGraphs.items()
                                     if s['split'] == key]
                               for key in ['train', 'test', 'val']}
-
-    def get_imageId(self, filename):
-        return filename.rstrip('.jpg').rstrip('.png').split('/')[-1]
 
     def to_split(self, split):
         self.split = split

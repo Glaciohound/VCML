@@ -1,12 +1,12 @@
 import torch
 import json
 import numpy as np
-from argparse import Namespace
 from dataset.tools import program_utils, question_utils, protocol
 from dataset.toy import teddy_dataset
 import sys
 args = sys.args
 info = sys.info
+from dataset.tools import collate_utils
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -21,6 +21,23 @@ class Dataset(torch.utils.data.Dataset):
         info.protocol = protocol.Protocol(args.allow_output_protocol, args.protocol_file)
         cls.load_questions()
         info.question_dataset = cls()
+
+        collate_setting = {
+            'index': {'type': 'stack', 'tensor': False},
+            'type': {'type': 'stack', 'tensor': False},
+            'question': {'type': 'pad-stack', 'pad_value': info.protocol['words', '<NULL>'],
+                         'tensor': True},
+            'program': {'type': 'pad-stack',
+                        'pad_fn': lambda x, y: (protocol['operations', '<NULL>'] if y==0
+                                                else protocol['concepts', '<NULL>']),
+                        'tensor': True},
+            'answer': {'type': 'stack', 'tensor': False},
+            'scene': {'type': 'stack', 'tensor': True},
+            'image': {'type': 'stack', 'tensor': True},
+            'objects': {'type': 'concat', 'axis': 0, 'tensor': True},
+            'objects_length': {'type': 'stack', 'tensor': True}
+        }
+        cls.collate_fn = collate_utils.get_collateFn(collate_setting)
 
     def __getitem__(self, index_):
         if isinstance(index_, str):
@@ -45,22 +62,22 @@ class Dataset(torch.utils.data.Dataset):
             'index': index,
             'type': question['type'],
             'question': question['question'] if not info.compact_data else question_encoded,
-            'scene': scene,
             'program': program if not info.compact_data else program_encoded,
             'answer': question['answer'] if not info.compact_data else answer_encoded,
         }
+        entry.update(scene)
         return entry
 
     @classmethod
     def load_questions(cls):
 
-        if args.task in ['toy', 'clevr_pt']:
-            if args.task == 'clevr_pt':
+        if args.group in ['toy', 'clevr']:
+            if args.task.startswith('clevr'):
                 teddy_dataset.ToyDataset.load_visual_dataset(info.visual_dataset)
             teddy_dataset.ToyDataset.build_question_dataset()
             cls.questions = teddy_dataset.ToyQuestionDataset()
 
-        elif args.task == 'gqa':
+        elif args.group == 'gqa':
             with open(args.questions_json, 'r') as f:
                 questions = json.load(f)
             filtered = []
@@ -101,63 +118,12 @@ class Dataset(torch.utils.data.Dataset):
 
     @classmethod
     def collate(cls, data):
-        output = Namespace()
-        protocol = info.protocol
         if not isinstance(data, list):
             data = [data]
         if info.compact_data:
-            max_quesiton_length = max([s['question'].shape[0] for s in data])
-            max_program_length = max([s['program'].shape[0] for s in data])
-            question_template = np.array([protocol['words', '<NULL>']
-                                          for i in range(max_quesiton_length)])
-            program_template = np.array([[protocol['operations', '<NULL>'],
-                                          protocol['concepts', '<NULL>']]
-                                         for i in range(max_program_length)])
-
-            for s in data:
-                def fill(template, this):
-                    copy = template.copy()
-                    copy[:this.shape[0]] = this
-                    return copy
-                s['question'] = fill(question_template, s['question'])
-                s['program'] = fill(program_template, s['program'])
-
-            output_dict = {
-                k: np.array([x[k] for x in data])
-                for k in data[0].keys()
-            }
-            output.__dict__.update(output_dict)
-            return output
+            return cls.collate_fn(data)
         else:
             return data
-
-    @classmethod
-    def show_attended(cls, output, num=5):
-        def get_concept(x):
-            x = int(x)
-            if x < len(info.protocol['concepts']):
-                return info.protocol['concepts', x]
-            elif x < args.max_concepts:
-                return 'unknown concept %d' % x
-
-        def get_object(x):
-            return 'object_%d' % x
-
-        if output.dim() == 3:
-            return [cls.show_attended(output[i])
-                    for i in range(output.shape[0])]
-        else:
-            concept_sort = output[:, :args.max_concepts].argsort(-1, True)
-            object_sort = output[:, args.max_concepts:].argsort(-1, True)
-            return [{'concepts':
-                     {get_concept(concept_sort[i, j]):
-                      float(output[i, concept_sort[i, j]])
-                      for j in range(num)},
-                     'objects':
-                     {get_object(object_sort[i, j]):
-                      float(output[i, object_sort[i, j]+args.max_concepts])
-                      for j in range(min(num, object_sort.shape[1]))}}
-                     for i in range(output.shape[0])]
 
     def get_names(self):
         names = []

@@ -1,5 +1,9 @@
 import os
 import json
+import sys
+from IPython.core import ultratb
+sys.excepthook = ultratb.FormattedTB(mode='Plain',
+                                     color_scheme='Linux', call_pdb=1)
 
 from options import get_options
 from datasets import get_dataloader

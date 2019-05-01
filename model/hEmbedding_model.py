@@ -15,6 +15,9 @@ args = sys.args
 info = sys.info
 import matplotlib.pyplot as plt
 import numpy as np
+from torch.autograd import Variable
+from model.resnet import Attribute_Network
+from utils.common import to_numpy, to_normalized
 
 class HEmbedding(nn.Module):
     def __init__(self):
@@ -31,6 +34,7 @@ class HEmbedding(nn.Module):
                                                       'concept', args.hidden_dim2)
         self.relation_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
                                                        'relation', 0, matrix=args.model=='h_embedding_mul')
+        self.resnet_model = Attribute_Network()
 
         if args.similarity == 'cosine':
             self.similarity = F.cosine_similarity
@@ -80,32 +84,41 @@ class HEmbedding(nn.Module):
             return matrix_embedding
 
     def forward(self, data):
-        batch_size = data.answer.shape[0]
+        batch_size = data['answer'].shape[0]
+        min_fn = lambda x, y: (torch.min(x, y)
+                               if info.new_torch
+                               else y.min(x))
 
-        def tensor(x):
-            if 'float' in x.dtype.name:
-                return torch.Tensor(x).to(info.device)
-            else:
-                return torch.LongTensor(x).to(info.device)
 
-        concept_arguments = self.concept_embedding(tensor(data.program)[:, :, 1])
-        relation_arguments = self.relation_embedding(tensor(data.program)[:, :, 1])
-        all_concepts = self.concept_embedding(torch.arange(args.max_concepts).to(info.device))
+        concept_arguments = self.concept_embedding(info.to(data['program'])[:, :, 1])
+        relation_arguments = self.relation_embedding(info.to(data['program'])[:, :, 1])
+        all_concepts = info.to(self.concept_embedding(Variable(info.to(torch.arange(args.max_concepts)).long())))
         history = []
         attentions = []
+        if info.visual_dataset.mode == 'detected':
+            if args.ipython:
+                info.embed()
+            feature, recognized = self.resnet_model(data)
 
         for i in range(batch_size):
-            num_objects = data.scene[i].shape[0]
-            num_nodes = num_objects + args.max_concepts
-            if args.task.startswith('toy'):
-                objects = self.embed_without_bg(tensor(data.scene[i]))
+            if info.visual_dataset.mode in ['encoded_sceneGraph', 'sceneGraph', 'pretrained']:
+                num_objects = data['scene'][i].shape[0]
             else:
-                objects = self.feature_mlp(tensor(data.scene[i]))
+                num_objects = data['objects_length'][i]
+
+            if info.visual_dataset.mode == 'encoded_sceneGraph':
+                objects = self.embed_without_bg(info.to(data['scene'][i]))
+            elif info.visual_dataset.mode == 'pretrained':
+                objects = self.feature_mlp(info.to(data['scene'][i]))
+            elif info.visual_dataset.mode == 'detected':
+                objects = self.feature_mlp(recognized[i][1])
+
+            num_nodes = num_objects + args.max_concepts
             all_nodes = torch.cat([all_concepts, objects])
             all_nodes = F.normalize(all_nodes, p=2, dim=-1)
-            attention = torch.ones(num_nodes).to(info.device) * self.huge_value
+            attention = Variable(info.to(torch.ones(num_nodes)) * self.huge_value)
 
-            for j, (op, arg) in enumerate(data.program[i]):
+            for j, (op, arg) in enumerate(data['program'][i]):
                 op_s = info.protocol['operations', int(op)]
                 arg_s = info.protocol['concepts', int(arg)]
                 attention = attention * 1
@@ -119,11 +132,11 @@ class HEmbedding(nn.Module):
                         raise Exception('unsupported select argument')
 
                 elif op_s == 'filter':
-                    attention = torch.min(attention, self.scale(self.similarity(
+                    attention = min_fn(attention, self.scale(self.similarity(
                         all_nodes, concept_arguments[i, j, None])))
 
                 elif op_s == 'verify':
-                    attention = torch.min(attention, self.scale(self.similarity(
+                    attention = min_fn(attention, self.scale(self.similarity(
                         all_nodes, concept_arguments[i, j, None])))
                     attention[torch.arange(num_nodes).long() != arg] = -self.huge_value
 
@@ -164,28 +177,28 @@ class HEmbedding(nn.Module):
             attentions.append(attention[:len(info.protocol['concepts'])])
 
         attentions = torch.stack(attentions)
-        program_length = data.program.shape[1]
+        program_length = data['program'].shape[1]
         history = {k: [torch.stack([history[i*program_length+j][k]
                                     for j in range(program_length)])
                                    for i in range(batch_size)]
                    for k in history[0].keys()}
         if args.loss == 'cross_entropy':
             output = F.log_softmax(attentions[:, :args.max_concepts], 1)
-            target = torch.LongTensor(data.answer).to(info.device)
+            target = info.to(torch.LongTensor(data['answer']))
         elif args.loss in ['mse', 'binary']:
             output = attentions[:, :args.max_concepts]
-            target = torch.zeros_like(output).to(info.device)
-            target[torch.arange(data.answer.shape[0]).long(), data.answer] = 1
+            target = info.to(torch.zeros_like(output))
+            target[torch.arange(data['answer'].shape[0]).long(), data['answer']] = 1
             target.requires_grad = False
 
         return output, target, history
 
     def embed_without_bg(self, x):
         if isinstance(x, list):
-            x = torch.LongTensor(x).to(info.device)
+            x = info.to(x)
 
         x = x+1
-        return self.attribute_embedding(x).sum(-2)
+        return self.attribute_embedding(Variable(x)).sum(-2)
 
     def matmul(self, *mats):
         output = mats[0]
@@ -199,8 +212,7 @@ class HEmbedding(nn.Module):
 
     def visualize_embedding(self, relation_type=None, normalizing=False):
         to_visualize = {}
-        to_numpy = info.to_numpy
-        normalize = info.normalize if normalizing else\
+        normalize = to_normalized if normalizing else\
             lambda x: x
 
         if relation_type is not None:
@@ -216,7 +228,7 @@ class HEmbedding(nn.Module):
                 if args.model == 'h_embedding_mul':
                     to_visualize[name+'_convert'] = normalize(np.matmul(vec, matrix))
                 else:
-                    to_visualize[name+'_convert'] = normalize(info.normalize(vec) + matrix)
+                    to_visualize[name+'_convert'] = normalize(to_normalized(vec) + matrix)
 
         to_visualize['zero_point'] = list(to_visualize.values())[0] * 0
 
@@ -266,8 +278,7 @@ class HEmbedding(nn.Module):
 
     def visualize_query(self, queried):
         to_visualize = {}
-        to_numpy = info.to_numpy
-        normalize = info.normalize
+        normalize = to_normalized
 
         obj_base = [info.vocabulary[np.random.choice(info.vocabulary[cat], 1)[0]]
                     for cat in info.vocabulary.records
@@ -299,11 +310,15 @@ class HEmbedding(nn.Module):
 
     def get_embedding(self, name, relational=False):
         embedding = self.concept_embedding if not relational else self.relation_embedding
-        return embedding(torch.LongTensor([info.protocol['concepts', name]]).to(info.device))[0]
+        return embedding(Variable(info.to(torch.LongTensor([
+            info.protocol['concepts', name]]))))[0]
 
     def init(self):
         for name, param in self.named_parameters():
-            init.normal_(param, 0, args.init_variance)
+            if info.new_torch:
+                init.normal_(param, 0, args.init_variance)
+            else:
+                init.normal(param, 0, args.init_variance)
             # init.orthogonal_(param)
         self.new_optimizer()
 

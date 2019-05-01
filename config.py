@@ -4,10 +4,19 @@ import os
 import shutil
 import pprint
 import sys
+import numpy as np
 
 class Info():
     def __init__(self):
         sys.__dict__.update({'info': self})
+        self.new_torch = torch.__version__.startswith('1')
+        args = sys.args
+        self.device = torch.device('cuda' if args.use_cuda else 'cpu')\
+            if self.new_torch else\
+            'cuda' if args.use_cuda else 'cpu'
+        self.to = lambda x: (x.to(self.device) if self.new_torch else
+                             x.cuda() if self.device == 'cuda' else
+                             x.cpu())
 
 class Config:
     conceptual_tokens = ['synonym', 'antonym', 'isinstance']
@@ -29,7 +38,7 @@ class Config:
             parser.add_argument(arg_name, **kwargs)
 
         parser.add_argument('--task', default='toy',
-                            choices=['gqa', 'toy', 'clevr_pt', 'clevr_rc'])
+                            choices=['gqa', 'toy', 'clevr_pt', 'clevr_dt'])
         parser.add_argument('--model', default='h_embedding_add',
                             choices=['relation_model', 'u_embedding',
                                      'h_embedding_mul', 'h_embedding_add'])
@@ -48,8 +57,9 @@ class Config:
         group = 'clevr'
         parser.add_argument('--clevr_data_dir', default='../../data/clevr')
         dir_add_argument('--image_dir', default='raw/CLEVR_v1.0/images')
-        dir_add_argument('--sceneGraph_dir', default='raw/CLEVR_v1.0/scenes')
-        dir_add_argument('--pt_sceneGraph_dir', default='attr_net/results')
+        #dir_add_argument('--sceneGraph_dir', default='raw/CLEVR_v1.0/scenes')
+        dir_add_argument('--sceneGraph_dir', default='detections')
+        dir_add_argument('--feature_sceneGraph_dir', default='attr_net/results')
         dir_add_argument('--protocol_file', default='processed/clevr_protocol.json')
         dir_add_argument('--vocabulary_file', default='processed/clevr_vocabulary.json')
         group = 'toy'
@@ -74,7 +84,7 @@ class Config:
 
         parser.add_argument('--max_sizeDataset', type=int, default=5000)
         parser.add_argument('--box_scale', type=int, default=1024)
-        parser.add_argument('--image_scale', type=int, default=592)
+        parser.add_argument('--image_scale', type=int, default=256)
         parser.add_argument('--ipython', action='store_true')
 
         parser.add_argument('--batch_size', type=int, default=10, metavar='N',
@@ -136,9 +146,15 @@ class Config:
         if os.path.exists(self.visualize_dir):
             shutil.rmtree(self.visualize_dir)
         os.makedirs(self.visualize_dir)
+
+        if self.no_random:
+            torch.manual_seed(0)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+            np.random.seed(0)
+
         self.num_gpus = torch.cuda.device_count()
         self.use_cuda = self.num_gpus > 0
-        sys.info.device = torch.device('cuda' if self.use_cuda else 'cpu')
         self.toy_categories = min(self.toy_categories, self.toy_attributes)
         self.toy_attributesPobject = min(self.toy_attributesPobject, self.toy_categories)
         self.load_by = 'question' if self.mode in ['concept-net']\

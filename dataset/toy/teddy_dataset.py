@@ -39,8 +39,8 @@ class ToyDataset:
             cls.sceneGraphs[str(i)] = scene
 
     @classmethod
-    def load_visual_dataset(cls, sceneGraphs):
-        cls.sceneGraphs = sceneGraphs
+    def load_visual_dataset(cls, dataset):
+        cls.visual_dataset = dataset
 
     @classmethod
     def build_question_dataset(cls):
@@ -76,10 +76,10 @@ class ToyDataset:
                 'train': get_concepts(train_cats),
             }
 
-        selected_ids = np.random.choice(list(cls.sceneGraphs.keys()), args.max_sizeDataset)
+        selected_ids = np.random.choice(list(cls.visual_dataset.keys()), args.max_sizeDataset)
         print('building question dataset')
         for scene_id in tqdm(selected_ids):
-            scene = cls.sceneGraphs[scene_id]
+            scene = cls.visual_dataset[scene_id]['scene']
             if 'objects' not in scene:
                 continue
             split = scene['split'] if not args.no_validation else 'train'
@@ -332,7 +332,7 @@ class ToyDataset:
         answer = 'no'
         for obj_id, obj in scene['objects'].items():
             for at in obj.values():
-                if at == queried:
+                if isinstance(at, str) and at == queried:
                     if '-' in which:
                         which.remove('-')
                     which.append(obj_id)

@@ -1,3 +1,4 @@
-€}q(U	run_train]q(UoptqUtrainerqUtrain_loaderqU
-val_loaderqUmodelqeUprocess_proposals]q(Uargsq	Uparserq
-Umainqeu.
+€}q(Urun_test]q(Utest_loaderqUfeaturesqUimg_idqUfoutqUidxsqU
+image_idxsqUpredq	Uoptq
+UCOMP_CAT_DICT_PATHqUcat_dictqUdataqUcountqUobjqUfUiUcidqUscenesqUcat_idxsqUoutputqUmodelqeU	run_train]q(UoptqUtrainerqUtrain_loaderqU
+val_loaderqUmodelqeUprocess_proposals]q(UargsqUparserqUmainqeu.
