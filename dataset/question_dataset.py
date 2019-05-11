@@ -1,43 +1,50 @@
 import torch
 import json
 import numpy as np
-from dataset.tools import program_utils, question_utils, protocol
+from dataset.tools import program_utils, question_utils
 from dataset.toy import teddy_dataset
 import sys
 args = sys.args
 info = sys.info
 from dataset.tools import collate_utils
+import copy
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self):
-        pass
+    inited = False
+    def __init__(self, visual_dataset, config):
+        self.valid_modes = ['encoded', 'plain']
+        self.mode = 'plain'
+        self.split = 'total'
+        Dataset.init()
+        self.load_questions(visual_dataset, config)
+        self.register_protocol()
 
     @classmethod
     def init(cls):
-        if not hasattr(info, 'compact_data'):
-            info.compact_data = False
+        if cls.inited:
+            return
+        cls.inited = True
         cls.program_utils = program_utils
-        info.protocol = protocol.Protocol(args.allow_output_protocol, args.protocol_file)
-        cls.load_questions()
-        info.question_dataset = cls()
 
-        collate_setting = {
+        cls.collate_setting = {
             'index': {'type': 'stack', 'tensor': False},
             'type': {'type': 'stack', 'tensor': False},
             'question': {'type': 'pad-stack', 'pad_value': info.protocol['words', '<NULL>'],
                          'tensor': True},
             'program': {'type': 'pad-stack',
-                        'pad_fn': lambda x, y: (protocol['operations', '<NULL>'] if y==0
-                                                else protocol['concepts', '<NULL>']),
+                        'pad_fn': lambda x, y: (info.protocol['operations', '<NULL>'] if y==0
+                                                else info.protocol['concepts', '<NULL>']),
                         'tensor': True},
             'answer': {'type': 'stack', 'tensor': False},
-            'scene': {'type': 'stack', 'tensor': True},
+            'scene_plain': {'type': 'stack', 'tensor': False},
+            'scene': {'type': 'list', 'tensor': True},
             'image': {'type': 'stack', 'tensor': True},
             'objects': {'type': 'concat', 'axis': 0, 'tensor': True},
-            'objects_length': {'type': 'stack', 'tensor': True}
+            'object_lengths': {'type': 'stack', 'tensor': True},
+            'object_classes': {'type': 'concat', 'axis': 0, 'tensor': True},
         }
-        cls.collate_fn = collate_utils.get_collateFn(collate_setting)
+        cls.collate_fn = collate_utils.get_collateFn(cls.collate_setting)
 
     def __getitem__(self, index_):
         if isinstance(index_, str):
@@ -61,21 +68,17 @@ class Dataset(torch.utils.data.Dataset):
         entry = {
             'index': index,
             'type': question['type'],
-            'question': question['question'] if not info.compact_data else question_encoded,
-            'program': program if not info.compact_data else program_encoded,
-            'answer': question['answer'] if not info.compact_data else answer_encoded,
+            'question': question['question'] if self.mode == 'plain' else question_encoded,
+            'program': program if self.mode == 'plain' else program_encoded,
+            'answer': question['answer'] if self.mode == 'plain' else answer_encoded,
         }
         entry.update(scene)
         return entry
 
-    @classmethod
-    def load_questions(cls):
+    def load_questions(self, visual_dataset, config):
 
         if args.group in ['toy', 'clevr']:
-            if args.task.startswith('clevr'):
-                teddy_dataset.ToyDataset.load_visual_dataset(info.visual_dataset)
-            teddy_dataset.ToyDataset.build_question_dataset()
-            cls.questions = teddy_dataset.ToyQuestionDataset()
+            self.questions = teddy_dataset.ToyDataset.build_question_dataset(visual_dataset, config)
 
         elif args.group == 'gqa':
             with open(args.questions_json, 'r') as f:
@@ -87,31 +90,46 @@ class Dataset(torch.utils.data.Dataset):
             questions = {k: questions[k] for k in filtered}
             for q_id, question in questions.items():
                 question['id'] = q_id
-            cls.questions = list(questions.values())
+            self.questions = list(questions.values())
 
-        cls.split_indexes = {key: [q_id for q_id, q in cls.questions.items()
+        self.split_indexes = {key: [q_id for q_id, q in self.questions.items()
                                     if q['split']==key]
                                 for key in ['train', 'test', 'val']}
-        cls.types = set(q['type'] for q in cls.questions.values()
+        self.split_indexes['total'] = list(self.questions.keys())
+        self.types = set(q['type'] for q in self.questions.values()
                         if 'type' in q)
+        self.answers = set(q['answer'] for q in self.questions.values())
 
     def to_split(self, split):
-        self.split = split
-        self.index = self.split_indexes[split]
-        return self
+        new_dataset = copy.copy(self)
+        new_dataset.split = split
+        return new_dataset
+
+    def to_mode(self, mode):
+        if mode in self.valid_modes:
+            self.mode = mode
+        else:
+            raise Exception('invalid mode: %s' % mode)
 
     @classmethod
-    def get_datasets(cls):
-        cls.init()
-        train, val, test = [cls().to_split(s)
+    def get_splits(cls, main_dataset):
+        train, val, test = [main_dataset.to_split(s)
                             for s in ['train', 'val', 'test']]
-        for dataset in [train, val, test]:
-            for i in range(len(dataset)):
-                dataset[i]
         return train, val, test
+
+    def register_protocol(self):
+        mode = self.mode
+        self.mode == 'encoded'
+        for i in range(len(self)):
+            self[i]
+        self.mode = mode
 
     def __len__(self):
         return min(len(self.index), args.max_sizeDataset)
+
+    @property
+    def index(self):
+        return self.split_indexes[self.split]
 
     def assertion_checks(self, entry):
         pass
@@ -120,20 +138,5 @@ class Dataset(torch.utils.data.Dataset):
     def collate(cls, data):
         if not isinstance(data, list):
             data = [data]
-        if info.compact_data:
-            return cls.collate_fn(data)
-        else:
-            return data
 
-    def get_names(self):
-        names = []
-        for cat, attributes in info.vocabulary.records_.items():
-            if cat != 'total':
-                for y in attributes:
-                    for x in info.protocol['concepts']:
-                        if y in x and x not in names:
-                            names.append(x)
-        return names
-
-    def get_data(self, index):
-        return self.collate(self[index])
+        return cls.collate_fn(data)

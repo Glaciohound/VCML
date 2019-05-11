@@ -48,7 +48,7 @@ class Protocol:
                 if item < len(self.records_[category]):
                     return self.records_[category][item]
                 else:
-                    raise Exception('unknown token')
+                    return '<UNK>'
             else:
                 if item in self.records_[category]:
                     if not self.gather:
@@ -103,3 +103,10 @@ class Protocol:
             raise Exception('%s belongs to multiple categories')
         else:
             return cats[0]
+
+    @property
+    def concepts(self):
+        names = []
+        for cat, attributes in sorted(self.records.items()):
+            names += attributes
+        return sorted(names)

@@ -296,16 +296,19 @@ def semantic2program_h(program_list):
             add_operation('filter', argument)
 
         elif operation == 'query':
-            add_operation('transfer', argument)
+            add_operation('transfer_oc', argument)
 
         elif operation == 'isinstance':
-            add_operation('transfer', operation)
+            add_operation('transfer_cc', operation)
 
         elif operation == 'exist':
             add_operation('exist', '<NULL>')
 
         elif operation in ['synonym', 'antonym']:
             add_verify(operation, argument)
+
+        elif operation == '<NULL>':
+            add_operation('<NULL>', '<NULL>')
 
         else:
             raise Exception('no such operation supported {}'.format(op))

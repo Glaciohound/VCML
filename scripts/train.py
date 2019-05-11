@@ -17,52 +17,61 @@ from IPython import embed
 import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
-from dataset import visual_dataset, question_dataset, dataloader
+from dataset import visual_dataset, question_dataset
+from dataset.tools import protocol, dataset_scheduler
 from model.relation_model import RelationModel
 from model.uEmbedding_model import UEmbedding
 from model.hEmbedding_model import HEmbedding
+from model.classification import Classification
 from utils.recording import Recording
-from utils.embedding import visualize_tb as vistb
-from utils.common import tqdm
+from utils.common import tqdm, endswith, equal_ratio, equal_items, recall
 import numpy as np
 
 def run_batch(data):
-    output, target, history = info.model(data)
+    output, target, history, penalty_loss = info.model(data)
     output = info.to(output)
-    is_bool = np.array(list(map(args.bool_question, data['type'].tolist()))).astype(float)
+    is_bool = np.array(list(map(lambda x: endswith(x, ['query', 'isinstance']),
+                                data['type'].tolist()))).astype(float)
     weight = info.to(torch.Tensor(is_bool + args.non_bool_weight * (1 - is_bool)))
 
     if info.new_torch:
         losses = info.loss_fn(output, target, reduction='none')
-        answers = output.argmax(1).cpu().detach().numpy()
-        accuracy = (answers == data['answer']).astype(float).mean()
+        answers = output.argmax(1)
     else:
         losses = info.loss_fn(output, Variable(target), reduce=False)
         weight = Variable(weight)
-        answers = output.data.max(1)[1].cpu().numpy()
-        accuracy = (answers == data['answer']).astype(float).mean()
+        answers = output.data.max(1)[1]
 
-    loss = (weight * losses).sum()
-    #yes = (answers == info.protocol['concepts', 'yes']).astype(float).mean()
-    #no = (answers == info.protocol['concepts', 'no']).astype(float).mean()
+    accuracy = equal_ratio(answers, target)
+
+    if args.subtask != 'classification':
+        loss = (weight * (losses + penalty_loss * args.penalty)).sum()
+    else:
+        loss = losses.sum()
     output = {'loss': loss, 'accuracy': accuracy,
-              #'yes': yes, 'no': no,
-              #'isinstance_length': info.model.get_embedding('isinstance', True).pow(2).sum().sqrt(),
+              'temperature': info.model.temperature,
+              'true_th': info.model.true_th,
               }
+
+    if 'yes' in info.question_dataset.answers:
+        yes = equal_ratio(answers, info.protocol['concepts', 'yes'])
+        no = equal_ratio(answers, info.protocol['concepts', 'no'])
+        output.update({'yes': yes, 'no': no})
+
     if accuracy != 1:
         info.log['flawed'] = data
 
     if args.conceptual:
-        yes_items = (answers == info.protocol['concepts', 'yes']).astype(float)
-        no_items = (answers == info.protocol['concepts', 'no']).astype(float)
-        right_items = (answers == data['answer']).astype(float)
+        yes_items = equal_items(answers, info.protocol['concepts', 'yes'])
+        no_items = equal_items(answers, info.protocol['concepts', 'no'])
+        right_items = equal_items(answers, target)
         types = info.question_dataset.types
         for t in types:
-            type_items = (data['type'].numpy() == t).astype(float)
+            type_items = equal_items(data['type'], t)
             if type_items.sum() > 0:
                 for select_items, select_name in\
                         ((yes_items, 'yes'), (no_items, 'no'), (right_items, 'right')):
-                    output['{}_{}'.format(t, select_name)] = (type_items * select_items).sum() / type_items.sum()
+                    output['{}_{}'.format(t, select_name)] = recall(select_items, type_items)
 
     return output
 
@@ -71,16 +80,14 @@ def train_epoch():
     info.model.train()
     info.pbars[0].write('epoch {}'.format(info.epoch))
     recording = info.train_recording
-    for data in tqdm(info.train, pbar_list=info.pbars):
+    for data in tqdm(info.train):
         info.optimizer.zero_grad()
         recording.update(run_batch(data))
-        #recording.previous['loss'].backward(retain_graph=True)
         recording.previous['loss'].backward(retain_graph=False)
         info.optimizer.step()
 
         info.pbars[1].set_description(str(recording)[:70])
 
-    info.pbars[1].pop_self()
     info.pbars[0].write('[TRAIN]\t' + recording.strings()[0][:100])
 
 
@@ -88,10 +95,11 @@ def val_epoch():
     info.model.eval()
     recording = info.val_recording
     with torch.no_grad():
-        for data in tqdm(info.val, pbar_list=info.pbars):
+        for data in tqdm(info.val):
             recording.update(run_batch(data))
 
-    info.pbars[1].pop_self()
+            info.pbars[1].set_description(str(recording)[:70])
+
     info.pbars[0].write('[VAL]\t%s' % recording.strings()[0][:100])
 
 def init():
@@ -100,51 +108,53 @@ def init():
         info.to(info.model)
     info.train_recording = Recording(name='train', mode='decaying')
     info.val_recording = Recording(name='val', mode='average')
+    info.dataset_scheduler = dataset_scheduler.DatasetScheduler()
 
 def run():
-    for info.epoch in tqdm(range(1, args.epochs + 1), pbar_list=info.pbars):
-        info.model.visualize_embedding(None if not args.conceptual
-                                       else args.subtask.split('_')[1],
-                                       normalizing=True)
+    for info.epoch in tqdm(range(1, args.epochs + 1)):
+        if not isinstance(info.model, Classification):
+            info.model.visualize_embedding(None if not args.conceptual
+                                           else args.subtask.split('_')[1]
+                                           if args.subtask != 'visual_bias'
+                                           else 'isinstance',)
+            info.model.visualize_logit()
         train_epoch()
         if not args.no_validation:
             val_epoch()
-        info.scheduler.step(info.train_recording.values['loss'])
-        info.val_recording.clear()
         info.model.save(args.name)
+
+        info.scheduler.step(info.train_recording.data['loss'])
+        info.dataset_scheduler.step(info.train_recording.data['accuracy'])
+
+        info.val_recording.clear()
         info.train_recording.visualize()
         info.val_recording.visualize()
 
 def main():
-    info.compact_data = True
     info.embed = embed
-    info.vistb = vistb.visualize_word_embedding_tb
+    info.protocol = protocol.Protocol(args.allow_output_protocol, args.protocol_file)
     info.plt = plt
     info.np = np
 
-    if args.model == 'relation_model':
+    if args.subtask == 'classification':
+        info.model = Classification()
+    elif args.model == 'relation_model':
         info.model = RelationModel()
     elif args.model == 'u_embedding':
         info.model = UEmbedding()
-    else:
+    elif 'h_embedding' in args.model:
         info.model = HEmbedding()
-    info.loss_fn = F.nll_loss if args.loss == 'cross_entropy' else\
-        F.mse_loss if args.loss == 'mse' else\
-        F.binary_cross_entropy
+    info.loss_fn = F.nll_loss
 
-    info.visual_dataset = visual_dataset.Dataset()
-    info.train, info.val, info.test =\
-        dataloader.get_dataloaders(question_dataset.Dataset)
-    info.visual_dataset.to_mode(
-        'detected' if args.task.endswith('dt') else
-        'pretrained' if args.task.endswith('pt') else
-        'encoded_sceneGraph'
-    )
-    args.names = info.question_dataset.get_names()
+    info.dataset_all = dataset_scheduler.\
+        build_incremental_training_datasets(visual_dataset.Dataset,
+                                            question_dataset.Dataset)
+    args.names = info.vocabulary.concepts
+
     args.print()
-
     info.pbars = []
     info.log = {}
+
     init()
     run()
     embed()

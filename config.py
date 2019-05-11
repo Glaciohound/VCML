@@ -39,9 +39,12 @@ class Config:
 
         parser.add_argument('--task', default='toy',
                             choices=['gqa', 'toy', 'clevr_pt', 'clevr_dt'])
-        parser.add_argument('--model', default='h_embedding_add',
-                            choices=['relation_model', 'u_embedding',
-                                     'h_embedding_mul', 'h_embedding_add'])
+        parser.add_argument('--model', default='h_embedding_add2',
+                            choices=['relation_model',
+                                     'u_embedding',
+                                     'h_embedding_mul',
+                                     'h_embedding_add',
+                                     'h_embedding_add2'])
         parser.add_argument('--similarity', default='cosine',
                             choices=['cosine', 'square'])
 
@@ -65,6 +68,7 @@ class Config:
         group = 'toy'
         parser.add_argument('--toy_data_dir', default='../../data/gqa')
         dir_add_argument('--protocol_file', default='processed/toy_protocol.json')
+        dir_add_argument('--vocabulary_file', default='processed/toy_vocabulary.json')
 
         parser.add_argument('--allow_output_protocol', action='store_true')
         parser.add_argument('--toy_objects', type=int, default=3)
@@ -79,8 +83,17 @@ class Config:
                                      'query_antonym', 'query_isinstance',
                                      'query_isinstance_rev',
                                      'visual_bias',
+                                     'classification',
                                      'filter_isinstance'])
+        parser.add_argument('--no_aid', action='store_true')
+        parser.add_argument('--classification', nargs='+', required=False,
+                            choices=['color', 'shape', 'material', 'size'])
         parser.add_argument('--questionsPimage', type=int, default=1)
+        parser.add_argument('--train_config', nargs='+', required=False,
+                            help='in the form of \'Attr_0:Attr_1,Attr2 ...\'')
+        parser.add_argument('--incremental_training', nargs='+', required=False,
+                            choices=['full', 'partial', 'replaced'],
+                            default=['full'])
 
         parser.add_argument('--max_sizeDataset', type=int, default=5000)
         parser.add_argument('--box_scale', type=int, default=1024)
@@ -89,25 +102,23 @@ class Config:
 
         parser.add_argument('--batch_size', type=int, default=10, metavar='N',
                             help='input batch size for training (default: 64)')
-        parser.add_argument('--epochs', type=int, default=30, metavar='N',
+        parser.add_argument('--epochs', type=int, default=50, metavar='N',
                             help='number of epochs to train (default: 10)')
         parser.add_argument('--lr', type=float, default=0.001, metavar='LR')
-        parser.add_argument('--temperature', type=float, default=1)
-        parser.add_argument('--non_bool_weight', type=float, default=1)
-        parser.add_argument('--init_variance', type=float, default=0.01)
-        parser.add_argument('--loss', type=str, default='cross_entropy',
-                            choices=['mse', 'binary', 'cross_entropy'])
+        parser.add_argument('--init_variance', type=float, default=0.1)
         parser.add_argument('--num_workers', default=1)
         parser.add_argument('--no_train_shuffle', action='store_false')
-        parser.add_argument('--mode', default='concept-net',
-                            choices=['concept-net'])
-        parser.add_argument('--curriculum_learning', action='store_true')
-        parser.add_argument('--perfect_th', type=float, default=0.05)
+        parser.add_argument('--perfect_th', type=float, default=0.99)
         parser.add_argument('--visualize_dir', type=str,
                             default='../../data/visualize')
         parser.add_argument('--ckpt_dir', type=str,
                             default='../../data/gqa/checkpoints')
         parser.add_argument('--visualize_time', type=int, default=500)
+
+        parser.add_argument('--true_th', type=float, default=0.8)
+        parser.add_argument('--temperature_init', type=float, default=2)
+        parser.add_argument('--non_bool_weight', type=float, default=1)
+        parser.add_argument('--penalty', type=float, default=1)
 
         parser.add_argument('--no_validation', action='store_true')
         parser.add_argument('--no_random', action='store_true')
@@ -141,11 +152,15 @@ class Config:
 
     def post_process(self):
         dicts = self.__dict__
+        self.root_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+
         self.visualize_dir = os.path.join(self.visualize_dir, self.model, self.name)
         self.ckpt_dir = os.path.join(self.ckpt_dir, self.model)
         if os.path.exists(self.visualize_dir):
             shutil.rmtree(self.visualize_dir)
         os.makedirs(self.visualize_dir)
+        if not os.path.exists(self.ckpt_dir):
+            os.makedirs(self.ckpt_dir)
 
         if self.no_random:
             torch.manual_seed(0)
@@ -157,8 +172,6 @@ class Config:
         self.use_cuda = self.num_gpus > 0
         self.toy_categories = min(self.toy_categories, self.toy_attributes)
         self.toy_attributesPobject = min(self.toy_attributesPobject, self.toy_categories)
-        self.load_by = 'question' if self.mode in ['concept-net']\
-            else 'image'
         self.group = self.task.split('_')[0]
         for group, arguments in self.dir_args.items():
             for arg in arguments:
@@ -167,22 +180,28 @@ class Config:
                 if group == self.group:
                     dicts[arg.replace(group+'_', '')] = dicts[arg]
 
+        if self.task.endswith('dt'):
+            self.feature_dim = 256
+
         self.conceptual = False
         for k in self.conceptual_tokens:
             if k in self.subtask:
                 self.conceptual = True
+        if self.subtask == 'visual_bias':
+            self.conceptual = True
+
         if self.no_validation:
             self.generalization_ratio = 0
         self.task_concepts = {}
 
-        def f_bool(x):
-            non_bool_postfixs = ['query']
-            for postfix in non_bool_postfixs:
-                if x.endswith(postfix):
-                    return False
-            return True
-        self.bool_question = f_bool
-
+        if self.train_config:
+            if ':' in self.train_config[0]:
+                train_config = {}
+                for item in self.train_config:
+                    main, attrs = item.split(':')
+                    attrs = attrs.split(',')
+                    train_config[main] = attrs
+            self.train_config = train_config
 
     def print(self):
         pprint.pprint('Arguments: ------------------------')
