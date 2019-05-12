@@ -109,4 +109,7 @@ class Protocol:
         names = []
         for cat, attributes in sorted(self.records.items()):
             names += attributes
-        return sorted(names)
+        if 'attr_00' in names:
+            return sorted(names)
+        else:
+            return names

@@ -9,10 +9,8 @@ from utils.embedding.visualize_tb import visualize_word_embedding_tb as vistb_or
 def get_imageId(filename):
     return filename.rstrip('.jpg').rstrip('.png').split('/')[-1]
 
-
 def union(x, y):
     return list(set(x).union(set(y)))
-
 
 def pick_one(x, requirement=None, on_value=False):
     if requirement:

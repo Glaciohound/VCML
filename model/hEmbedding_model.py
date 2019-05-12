@@ -45,9 +45,9 @@ class HEmbedding(nn.Module):
 
         self.concept_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
                                                       'concept', args.hidden_dim2)
-        if self.model != 'add2':
-            self.relation_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
-                                                        'relation', 0, matrix=self.model=='mul')
+
+        self.relation_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
+                                                    'relation', 0, matrix=self.model=='mul')
 
         self.resnet_model = Attribute_Network()
 
@@ -123,8 +123,9 @@ class HEmbedding(nn.Module):
         processed = dict()
 
         processed['concept_arguments'] = self.concept_embedding(info.to(data['program'])[:, :, 1])
-        processed['relation_arguments'] = (self.relation_embedding if self.model != 'add2'
-                                           else self.concept_embedding)(info.to(data['program'])[:, :, 1])
+        #processed['relation_arguments'] = (self.relation_embedding if self.model != 'add2'
+        #                                   else self.concept_embedding)(info.to(data['program'])[:, :, 1])
+        processed['relation_arguments'] = self.relation_embedding(info.to(data['program'])[:, :, 1])
         processed['all_concepts'] = info.to(self.concept_embedding(Variable(info.to(torch.arange(args.max_concepts)).long())))
         processed['program_length'] = program_length
         if 'scene' in data:
@@ -164,14 +165,11 @@ class HEmbedding(nn.Module):
         elif info.visual_dataset.mode == 'pretrained':
             objects = self.feature_mlp(processed['scene'][i])
         elif info.visual_dataset.mode == 'detected':
-            #objects = self.feature_mlp(processed['recognized'][i][1])
             objects = processed['recognized'][i][1][:, :self.obj_embed_dim]
 
         objects = to_normalized(objects)
-        if self.model != 'add2':
-            all_concepts = to_normalized(processed['all_concepts'])
-        else:
-            all_concepts = processed['all_concepts']
+        all_concepts = processed['all_concepts']
+        if self.model == 'add2':
             all_concepts = torch.cat([all_concepts[:, :self.obj_embed_dim],
                                       to_normalized(all_concepts[:, self.obj_embed_dim:])], dim=1)
 
@@ -218,9 +216,6 @@ class HEmbedding(nn.Module):
                     -log_or(this_logit, submax_logit).min()\
                     -log_or(-same_class_logit,
                             logit_xand(believed_logit, true_logit)).min(0)[0].sum()\
-                    #-log_or(-believed_logit,
-                    #        logit_xand(feasible_logit[:, None], revised_logit)).min(0)[0].sum()\
-                    #-log_or(-believed_logit, true_logit).min(0)[0].sum()\
 
                 if 'logit_scatter' not in info.log:
                     self.init_logits()
@@ -290,9 +285,9 @@ class HEmbedding(nn.Module):
             elif op_s.startswith('transfer'):
 
                 if op_s.startswith('transfer_o'):
-                    gather = torch.matmul(F.softmax(attention['objects'], -1), objects)
+                    gather = torch.matmul(F.softmax(attention['objects'], -1), to_normalized(objects))
                 else:
-                    gather = torch.matmul(F.softmax(attention['concepts'], -1), all_concepts)
+                    gather = torch.matmul(F.softmax(attention['concepts'], -1), to_normalized(all_concepts))
                 dim = gather.shape[0]
 
                 if op_s.endswith('c'):
@@ -313,7 +308,7 @@ class HEmbedding(nn.Module):
 
                 elif self.model == 'add2':
                     transferred = gather + processed['relation_arguments'][i, j][:dim]
-                    to_compare = to_compare[:,-dim:]
+                    to_compare = to_compare[:, -dim:]
                     output = self.scale(self.similarity(to_compare, transferred[None]))
 
                 assign(attention, -self.huge_value)
@@ -363,7 +358,7 @@ class HEmbedding(nn.Module):
             if self.model != 'add2':
                 vec_norm = to_normalized(vec)
             else:
-                vec_norm = np.concatenate([to_normalized(vec[:self.obj_embed_dim]),
+                vec_norm = np.concatenate([vec[:self.obj_embed_dim],
                                            to_normalized(vec[self.obj_embed_dim:])])
             to_visualize[name+'_ori'] = vec_norm
 
@@ -392,10 +387,10 @@ class HEmbedding(nn.Module):
         if relation_type is not None:
             if self.model == 'mul':
                 converted = to_normalized(matmul(original, matrix))
-                distance_mat = matmul(converted, (converted-original).transpose())
+                distance_mat = matmul(converted, to_normalized(converted-original).transpose())
             else:
                 converted = to_normalized(original + matrix[None])
-                distance_mat = matmul(converted, original.transpose())
+                distance_mat = matmul(converted, to_normalized(original).transpose())
 
             self.matshow(distance_mat, 'distance')
             self.matshow(matmul(converted, converted.transpose()), 'cosine_converted')
@@ -478,8 +473,9 @@ class HEmbedding(nn.Module):
 
     def get_embedding(self, name, relational=False):
         embedding = self.concept_embedding\
-            if not relational or self.model == 'add2'\
+            if not relational\
             else self.relation_embedding
+            #if not relational or self.model == 'add2'\
         return embedding(Variable(info.to(to_tensor([
             info.protocol['concepts', name]]))))[0]
 
@@ -494,7 +490,6 @@ class HEmbedding(nn.Module):
 
     def new_optimizer(self):
         info.optimizer = optim.Adam(self.parameters(),
-        #info.optimizer = optim.SGD(self.parameters(),
                                    lr=args.lr)
         info.scheduler = ReduceLROnPlateau(info.optimizer, patience=2, verbose=True)
 

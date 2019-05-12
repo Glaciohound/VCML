@@ -1,4 +1,6 @@
 import sys
+setattr(sys, 'info', None)
+setattr(sys, 'args', None)
 from IPython.core import ultratb
 sys.excepthook = ultratb.FormattedTB(mode='Plain',
                                      color_scheme='Linux', call_pdb=1)
@@ -25,6 +27,7 @@ from model.hEmbedding_model import HEmbedding
 from model.classification import Classification
 from utils.recording import Recording
 from utils.common import tqdm, endswith, equal_ratio, equal_items, recall
+from utils.basic import init_seed, save_log
 import numpy as np
 
 def run_batch(data):
@@ -103,6 +106,8 @@ def val_epoch():
     info.pbars[0].write('[VAL]\t%s' % recording.strings()[0][:100])
 
 def init():
+    if args.no_random:
+        init_seed()
     info.model.init()
     if args.use_cuda:
         info.to(info.model)
@@ -112,12 +117,6 @@ def init():
 
 def run():
     for info.epoch in tqdm(range(1, args.epochs + 1)):
-        if not isinstance(info.model, Classification):
-            info.model.visualize_embedding(None if not args.conceptual
-                                           else args.subtask.split('_')[1]
-                                           if args.subtask != 'visual_bias'
-                                           else 'isinstance',)
-            info.model.visualize_logit()
         train_epoch()
         if not args.no_validation:
             val_epoch()
@@ -127,14 +126,28 @@ def run():
         info.dataset_scheduler.step(info.train_recording.data['accuracy'])
 
         info.val_recording.clear()
-        info.train_recording.visualize()
-        info.val_recording.visualize()
+        if args.visualize_dir:
+            if not isinstance(info.model, Classification):
+                info.model.visualize_embedding(None if not args.conceptual
+                                            else args.subtask.split('_')[1]
+                                            if args.subtask != 'visual_bias'
+                                            else 'isinstance',)
+                info.model.visualize_logit()
+            info.train_recording.visualize()
+            info.val_recording.visualize()
+
+        save_log(os.path.join(args.log_dir, args.name+'.pkl'),
+                info.val_recording.history,
+                args.__dict__)
 
 def main():
     info.embed = embed
     info.protocol = protocol.Protocol(args.allow_output_protocol, args.protocol_file)
     info.plt = plt
     info.np = np
+
+    if args.no_random:
+        init_seed()
 
     if args.subtask == 'classification':
         info.model = Classification()
@@ -157,7 +170,6 @@ def main():
 
     init()
     run()
-    embed()
 
 if __name__ == '__main__':
     main()

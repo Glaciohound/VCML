@@ -60,20 +60,30 @@ class ToyDataset:
                                                  [at for attrs in all_concepts.values()
                                                   for at in attrs])
 
-        if 'synonym' in args.subtask or 'query_isinstance' in args.subtask\
-                or args.subtask == 'filter_isinstance':
-            task_concepts = {'val': np.random.choice(list(all_concepts),
-                                                     int(len(all_concepts)*args.generalization_ratio),
-                                                     replace=False)}
+        if 'synonym' in args.subtask or 'query_isinstance' in args.subtask:
+                #or args.subtask == 'filter_isinstance':
+            task_concepts = {}
+            if args.val_concepts:
+                assert set(args.val_concepts).issubset(set(all_concepts)), 'outside concept set'
+                task_concepts['val'] = args.val_concepts
+            else:
+                task_concepts['val'] = np.random.choice(list(all_concepts),
+                                                        int(len(all_concepts)*args.generalization_ratio),
+                                                        replace=False)
             task_concepts['train'] = np.setdiff1d(list(all_concepts), task_concepts['val'])
             task_concepts['total'] = all_concepts
             args.task_concepts[config] = task_concepts
         elif 'filter_isinstance' in args.subtask:
-            task_concepts = {'val': np.random.choice(info.vocabulary['color']
-                                                     if 'color' in info.vocabulary.records
-                                                     else list(all_concepts),
-                                                     int(len(all_concepts)*args.generalization_ratio),
-                                                     replace=False)}
+            task_concepts = {}
+            if args.val_concepts:
+                assert set(args.val_concepts).issubset(set(all_concepts)), 'outside concept set'
+                task_concepts['val'] = args.val_concepts
+            else:
+                task_concepts['val'] =  np.random.choice(info.vocabulary['color']
+                                                        if 'color' in info.vocabulary.records
+                                                        else list(all_concepts),
+                                                        int(len(all_concepts)*args.generalization_ratio),
+                                                        replace=False)
             task_concepts['train'] = np.setdiff1d(list(all_concepts), task_concepts['val'])
             task_concepts['total'] = all_concepts
             args.task_concepts[config] = task_concepts
@@ -113,10 +123,10 @@ class ToyDataset:
                     if 'synonym' in args.subtask:
                         question = cls.synonym_question(split, config, conceptualQuestion_counter)
                     elif 'isinstance' in args.subtask:
-                        question = cls.multiselect_isinstance_question(split, config, conceptualQuestion_counter)
+                        question = cls.isinstance_question(split, config, conceptualQuestion_counter)
                     elif args.subtask == 'visual_bias':
                         if split == 'train' and not args.no_aid:
-                            question = cls.multiselect_isinstance_question(split, config, conceptualQuestion_counter)
+                            question = cls.isinstance_question(split, config, conceptualQuestion_counter)
                         else:
                             question = None
                     else:
@@ -277,39 +287,7 @@ class ToyDataset:
         return question
 
     @classmethod
-    def binary_isinstance_question(cls, split, config, counter):
-        if args.subtask == 'query_isinstance_rev':
-            split = 'total'
-        task_concepts = list(args.task_concepts[config][split])
-        queried_1 = random_one(task_concepts)
-        queried_1_cat = info.vocabulary.belongs_to(queried_1)
-        counter['bin_isinstance'] += 0.5 * (1 + 1/(len(info.vocabulary.records)-1))
-
-        if counter['bin_isinstance'] >= 1:
-            counter['bin_isinstance'] -= 1
-            queried_2 = queried_1_cat
-            answer = 'yes'
-        else:
-            queried_2 = random_one(info.vocabulary.records)
-            answer = 'yes' if queried_2 == queried_1_cat else 'no'
-
-        queried_1 = cls.alternative(queried_1, config)
-
-        question ={
-            'question': 'Is {} an instance of {} ?'.format(queried_1, queried_2),
-            'semantic': [
-                {'operation': 'select_concept', 'argument': format(queried_1),
-                 'dependencies': []},
-                {'operation': 'isinstance', 'argument': format(queried_2),
-                 'dependencies': [1]}
-            ],
-            'answer': answer,
-            'type': 'isinstance',
-        }
-        return question
-
-    @classmethod
-    def multiselect_isinstance_question(cls, split, config, counter):
+    def isinstance_question(cls, split, config, counter):
         if args.subtask == 'query_isinstance_rev':
             split = 'total'
         task_concepts = list(args.task_concepts[config][split])

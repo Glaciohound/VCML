@@ -8,7 +8,7 @@ import numpy as np
 
 class Info():
     def __init__(self):
-        sys.__dict__.update({'info': self})
+        setattr(sys, 'info', self)
         self.new_torch = torch.__version__.startswith('1')
         args = sys.args
         self.device = torch.device('cuda' if args.use_cuda else 'cpu')\
@@ -21,7 +21,7 @@ class Info():
 class Config:
     conceptual_tokens = ['synonym', 'antonym', 'isinstance']
     def __init__(self):
-        sys.__dict__.update({'args': self})
+        setattr(sys, 'args', self)
         args = self.parse_args()
         self.__dict__.update(vars(args))
         self.post_process()
@@ -94,6 +94,7 @@ class Config:
         parser.add_argument('--incremental_training', nargs='+', required=False,
                             choices=['full', 'partial', 'replaced'],
                             default=['full'])
+        parser.add_argument('--val_concepts', nargs='+', required=False)
 
         parser.add_argument('--max_sizeDataset', type=int, default=5000)
         parser.add_argument('--box_scale', type=int, default=1024)
@@ -105,20 +106,22 @@ class Config:
         parser.add_argument('--epochs', type=int, default=50, metavar='N',
                             help='number of epochs to train (default: 10)')
         parser.add_argument('--lr', type=float, default=0.001, metavar='LR')
-        parser.add_argument('--init_variance', type=float, default=0.1)
+        parser.add_argument('--init_variance', type=float, default=0.01)
         parser.add_argument('--num_workers', default=1)
         parser.add_argument('--no_train_shuffle', action='store_false')
         parser.add_argument('--perfect_th', type=float, default=0.99)
-        parser.add_argument('--visualize_dir', type=str,
+        parser.add_argument('--visualize_dir', type=str, nargs='*',
                             default='../../data/visualize')
+        parser.add_argument('--log_dir', type=str,
+                            default='../../data/log')
         parser.add_argument('--ckpt_dir', type=str,
                             default='../../data/gqa/checkpoints')
         parser.add_argument('--visualize_time', type=int, default=500)
 
-        parser.add_argument('--true_th', type=float, default=0.8)
+        parser.add_argument('--true_th', type=float, default=0.9)
         parser.add_argument('--temperature_init', type=float, default=2)
-        parser.add_argument('--non_bool_weight', type=float, default=1)
-        parser.add_argument('--penalty', type=float, default=1)
+        parser.add_argument('--non_bool_weight', type=float, default=0.1)
+        parser.add_argument('--penalty', type=float, default=0)
 
         parser.add_argument('--no_validation', action='store_true')
         parser.add_argument('--no_random', action='store_true')
@@ -154,19 +157,18 @@ class Config:
         dicts = self.__dict__
         self.root_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
 
-        self.visualize_dir = os.path.join(self.visualize_dir, self.model, self.name)
+        if self.visualize_dir:
+            self.visualize_dir = os.path.join(self.visualize_dir, self.model, self.name)
+            if os.path.exists(self.visualize_dir):
+                shutil.rmtree(self.visualize_dir)
+            os.makedirs(self.visualize_dir)
+
+        self.log_dir = os.path.join(self.log_dir, self.model)
         self.ckpt_dir = os.path.join(self.ckpt_dir, self.model)
-        if os.path.exists(self.visualize_dir):
-            shutil.rmtree(self.visualize_dir)
-        os.makedirs(self.visualize_dir)
         if not os.path.exists(self.ckpt_dir):
             os.makedirs(self.ckpt_dir)
-
-        if self.no_random:
-            torch.manual_seed(0)
-            torch.backends.cudnn.deterministic = True
-            torch.backends.cudnn.benchmark = False
-            np.random.seed(0)
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
 
         self.num_gpus = torch.cuda.device_count()
         self.use_cuda = self.num_gpus > 0
