@@ -80,6 +80,7 @@ class ToyDataset:
     def build_question_dataset(cls, visual_dataset, config):
         questions = {}
         all_concepts = {k: [k] for k in info.vocabulary['total']}
+
         if config == 'partial':
             for attr in args.train_config:
                 if attr in all_concepts:
@@ -88,7 +89,8 @@ class ToyDataset:
             for attr in args.train_config:
                 if attr in all_concepts:
                     all_concepts[attr] = [attr+'_syn']
-        elif 'synonym' in args.subtask:
+
+        if 'synonym' in args.subtasks:
             _all_concepts = {}
             for attr in all_concepts.keys():
                 if attr in args.train_config:
@@ -104,8 +106,7 @@ class ToyDataset:
                                                  [at for attrs in all_concepts.values()
                                                   for at in attrs])
 
-        if 'synonym' in args.subtask or 'query_isinstance' in args.subtask\
-                or args.subtask == 'filter_isinstance':
+        if args.conceptual:
             task_concepts = {}
             if args.val_concepts:
                 assert set(args.val_concepts).issubset(set(all_concepts)), 'outside concept set'
@@ -117,24 +118,6 @@ class ToyDataset:
             task_concepts['train'] = np.setdiff1d(list(all_concepts), task_concepts['val'])
             task_concepts['total'] = all_concepts
             args.task_concepts[config] = task_concepts
-        elif 'filter_isinstance' in args.subtask:
-            task_concepts = {}
-            if args.val_concepts:
-                assert set(args.val_concepts).issubset(set(all_concepts)), 'outside concept set'
-                task_concepts['val'] = args.val_concepts
-            else:
-                task_concepts['val'] =  np.random.choice(info.vocabulary['color']
-                                                        if 'color' in info.vocabulary.records
-                                                        else list(all_concepts),
-                                                        int(len(all_concepts)*args.generalization_ratio),
-                                                        replace=False)
-            task_concepts['train'] = np.setdiff1d(list(all_concepts), task_concepts['val'])
-            task_concepts['total'] = all_concepts
-            args.task_concepts[config] = task_concepts
-        elif args.subtask == 'visual_bias':
-            task_concepts = {'train': list(all_concepts), 'val': list(all_concepts),
-                             'total': all_concepts}
-            args.task_concepts[config] = task_concepts
         else:
             task_concepts = {'train': list(all_concepts), 'val': list(all_concepts),
                              'total': all_concepts}
@@ -142,7 +125,8 @@ class ToyDataset:
 
         selected_ids = np.random.choice(list(visual_dataset.keys()), args.max_sizeDataset)
         print('building question dataset')
-        conceptualQuestion_counter = {'synonym': 0, 'isinstance': 0, 'bin_isinstance': 0}
+        cls.conceptualQuestion_counter = {'synonym': 0, 'isinstance': 0, 'bin_isinstance': 0}
+
         for scene_id in tqdm(selected_ids):
             scene = visual_dataset[scene_id]['scene_plain']
             if 'objects' not in scene:
@@ -151,30 +135,31 @@ class ToyDataset:
             if split == 'test':
                 continue
             for j in range(args.questionsPimage):
+                conceptual_subtasks = list(set(args.subtasks).intersection(
+                    set(args.conceptual_subtasks)))
+                visual_subtasks = list(set(args.subtasks).difference(
+                    set(conceptual_subtasks)))
                 if not args.conceptual or \
                         np.random.random() > args.conceptual_question_ratio:
-                    if args.subtask == 'classification':
-                        question = cls.empty_question(scene)
-                    elif 'exist' in args.subtask or (args.subtask == 'visual_bias' and args.group == 'toy'):
+                    _visual_subtask = np.random.choice(visual_subtasks)
+                    if _visual_subtask == 'classification':
+                        question = cls.empty_question(scene, 'classification')
+                    elif _visual_subtask == 'exist':
                         question = cls.exist_question(scene, config)
-                    elif 'filter' in args.subtask or (args.subtask == 'visual_bias' and args.group == 'clevr'):
+                    elif _visual_subtask == 'filter':
                         question = cls.filter_question(scene, config)
-                    elif 'query' in args.subtask:
+                    elif _visual_subtask == 'query':
                         question = cls.query_question(scene, config)
                     else:
-                        raise Exception('not such task supported as %s' % args.subtask)
+                        raise Exception('not such task supported as %s' % _visual_subtask)
                 else:
-                    if 'synonym' in args.subtask:
-                        question = cls.synonym_question(split, config, conceptualQuestion_counter)
-                    elif 'isinstance' in args.subtask:
-                        question = cls.isinstance_question(split, config, conceptualQuestion_counter)
-                    elif args.subtask == 'visual_bias':
-                        if split == 'train' and not args.no_aid:
-                            question = cls.isinstance_question(split, config, conceptualQuestion_counter)
-                        else:
-                            question = None
+                    _conceptual_subtask = np.random.choice(conceptual_subtasks)
+                    if _conceptual_subtask == 'synonym':
+                        question = cls.synonym_question(split, config)
+                    elif _conceptual_subtask == 'isinstance':
+                        question = cls.isinstance_question(split, config)
                     else:
-                        raise Exception('no such conceptual question type found: %s' % args.subtask)
+                        raise Exception('no such conceptual question type found: %s' % _conceptual_subtask)
 
                 if question is not None:
                     question['image_id'] = scene_id
@@ -183,7 +168,7 @@ class ToyDataset:
         return questions
 
     @classmethod
-    def empty_question(cls, scene):
+    def empty_question(cls, scene, fake_name):
         # filter-exist questions
 
         question = {
@@ -193,7 +178,7 @@ class ToyDataset:
                 'dependencies': []},
             ],
             'answer': 'None',
-            'type': 'classification',
+            'type': fake_name,
         }
 
         return question
@@ -271,7 +256,7 @@ class ToyDataset:
             which_3 = list(set(which_2).intersection(set(which_3)))
             answer = obj[cat_4]
             if len(set(which_1).intersection(set(which_2)).intersection(set(which_3))) == 1 and \
-                    (args.subtask != 'query_isinstance_rev' or answer in args.task_concepts[config][split]) and\
+                    answer in args.task_concepts[config][split] and\
                     set([attr_1, attr_2, attr_3, answer]).issubset(set(args.task_concepts[config]['total'])):
                 found = True
                 break
@@ -302,7 +287,8 @@ class ToyDataset:
         return question
 
     @classmethod
-    def synonym_question(cls, split, config, counter):
+    def synonym_question(cls, split, config):
+        counter = cls.conceptualQuestion_counter
         task_concepts = args.task_concepts[config][split]
         queried_1 = random_one(task_concepts)
         counter['synonym'] += 0.5 * (1 + 1/(len(task_concepts)-1))
@@ -331,10 +317,11 @@ class ToyDataset:
         return question
 
     @classmethod
-    def isinstance_question(cls, split, config, counter):
-        if args.subtask == 'query_isinstance_rev':
-            split = 'total'
+    def isinstance_question(cls, split, config):
+        counter = cls.conceptualQuestion_counter
         task_concepts = list(args.task_concepts[config][split])
+        if not task_concepts:
+            return None
         counter['isinstance'] += 1
 
         if split == 'train':

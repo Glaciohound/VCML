@@ -15,7 +15,7 @@ def get_dataloaders(dataset_kit):
     train_loader = DataLoader(
         dataset=dataset_kit['train'],
         batch_size=args.batch_size * args.num_gpus,
-        shuffle=not args.no_train_shuffle,
+        shuffle=args.train_shuffle,
         **kwargs)
 
     val_loader = DataLoader(

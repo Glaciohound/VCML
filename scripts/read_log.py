@@ -4,7 +4,7 @@ import sys
 import pickle
 import numpy as np
 
-results = []
+results = {}
 
 for filename in glob(os.path.join('../../data/log/',
                                   sys.argv[1], '*')):
@@ -14,21 +14,20 @@ for filename in glob(os.path.join('../../data/log/',
         right = np.array(history['isinstance_right'])
     else:
         right = np.array(history['accuracy'])
-    results.append((args['name'],
-                    {'cur': right[-1], 'mean': right.mean()}
-                    ))
+    results[args['name']] =\
+        {'cur': right[-1], 'mean': right.mean()}
 
 
 def filter(*pieces):
-    output = []
-    for r in results:
+    output = {}
+    for name, item in results.items():
         feasible = True
         for p in pieces:
-            if p not in r[0]:
+            if p not in name:
                 feasible = False
         if feasible:
-            output.append(r)
-    return output
+            output[name] = item
+    return dict(sorted(output.items()))
 
 from IPython import embed
 embed()

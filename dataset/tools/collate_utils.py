@@ -1,9 +1,11 @@
 import numpy as np
 from utils.common import to_tensor
+import torch
 
 '''
 'stack':
-    stack the batch as an array, no matter if they are of the same shape.
+    stack the batch as an array,
+    no matter if they are of the same shape or not.
 'pad-stack':
     pad the batch into the same shape, and then stack them
 'concat':

@@ -42,9 +42,9 @@ class Dataset(torch.utils.data.Dataset):
             'image': {'type': 'stack', 'tensor': True},
             'objects': {'type': 'concat', 'axis': 0, 'tensor': True},
             'object_lengths': {'type': 'stack', 'tensor': True},
-            'object_classes': {'type': 'concat', 'axis': 0, 'tensor': True},
+            'object_classes': {'type': 'list', 'tensor': True},
             'filter_fn': ('or', (
-                args.subtask!='classification',
+                'classification' not in args.subtasks,
                 ('equal_in_length',
                  ('object_lengths', 'scene_plain', 'scene', 'object_classes')),
             ))

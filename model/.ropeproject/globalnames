@@ -3,6 +3,6 @@ SceneGraphq	eU
 transition]q
 (Uweighted_lossqU
 TransitionqUtestqUtrainqUmainqU
-first_lossqUDatasetqU	last_lossqeUresnet]qUReasoningV1ModelqaU
-functional]q(UCOOR_TO_LEN_CORRqUbox_iouqUgenerate_intersection_mapqUgenerate_roi_pool_binsqUbox_sizeqUbox_intersectionqUgenerate_union_boxqeUsimple_classifier]qURelationModelqaUhEmbedding_model]q(U
+first_lossqUDatasetqU	last_lossqeU
+functional]q(UCOOR_TO_LEN_CORRqUbox_iouqUgenerate_intersection_mapqUgenerate_roi_pool_binsqUbox_sizeqUbox_intersectionqUgenerate_union_boxqeUresnet]qUReasoningV1ModelqaUsimple_classifier]qURelationModelqaUhEmbedding_model]q(U
 HEmbeddingq Uargsq!Uinfoq"eUrelation_model]q#hau.

@@ -11,7 +11,7 @@
 import torch.nn as nn
 import jactorch.nn as jacnn
 import jactorch.models.vision.resnet as resnet
-from model.scene_graph import SceneGraph
+from model.utils.scene_graph import SceneGraph
 import sys
 info = sys.info
 

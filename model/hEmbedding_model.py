@@ -16,7 +16,7 @@ args = sys.args
 info = sys.info
 import matplotlib.pyplot as plt
 import numpy as np
-from model.resnet import Attribute_Network
+from model.utils.resnet import Attribute_Network
 from utils.common import to_numpy, to_normalized, min_fn,\
     matmul, to_tensor, vistb, arange, logit_exist, log_or, logit_xand
 
@@ -42,6 +42,9 @@ class HEmbedding(nn.Module):
         self.feature_mlp = self.build_mlp(args.feature_dim, self.obj_embed_dim,
                                              'feature', args.hidden_dim)
 
+        self.classification_mlp = self.build_mlp(args.feature_dim, self.obj_embed_dim,
+                                             'classification', args.hidden_dim)
+
         self.concept_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
                                                       'concept', args.hidden_dim)
 
@@ -58,6 +61,7 @@ class HEmbedding(nn.Module):
         self.scale = lambda x: self.temperature * (x-self.true_th)
         self.huge_value = 100
 
+
     @property
     def temperature(self):
         return self.temperature_.detach()
@@ -72,6 +76,7 @@ class HEmbedding(nn.Module):
         return self.same_class_th_.detach()
 
 
+    ''' logit function taking into (x, y) and compute the logit for the similarity probability between them '''
     def logit_fn(self, *arg, threshold=None, **kwarg):
         if not threshold:
             threshold = self.true_th
@@ -88,6 +93,7 @@ class HEmbedding(nn.Module):
         return lambda x: linear2(linear1(x))
 
     def build_embedding(self, n, dim, name, dim_hidden, matrix=False):
+        '''  building the parameters for embedding '''
         if dim_hidden <= 0:
             if not matrix:
                 hidden_embedding = nn.Embedding(n, dim)
@@ -105,6 +111,10 @@ class HEmbedding(nn.Module):
             setattr(self, name+'_hidden_linear', hidden_linear)
             embedding = lambda x: hidden_linear(hidden_embedding(x))
 
+        '''
+        branching conditioned on whether the concept embedding will actually
+        be used in form of a linear transformation, i.e., a matrix
+        '''
         if not matrix:
             return embedding
         else:
@@ -129,33 +139,55 @@ class HEmbedding(nn.Module):
         if info.visual_dataset.mode == 'detected':
             processed['feature'], processed['recognized'] = self.resnet_model(data)
 
-        history = [None for i in range(batch_size * program_length)]
         attentions = [None for i in range(batch_size)]
+        history = [{'attention': []} for i in range(batch_size)]
         penalty_loss = [None for i in range(batch_size)]
+        targets = [None for i in range(batch_size)]
+        types = [None for i in range(batch_size)]
 
         for i in range(batch_size):
-            self.run_piece(data, processed, i, attentions, history, penalty_loss)
+            self.run_piece(data, processed, i,
+                           attentions, history, penalty_loss,
+                           targets, types)
 
-        attentions = torch.stack(attentions)
-        penalty_loss = torch.stack(penalty_loss)
+        attentions = torch.cat(attentions)
+        penalty_loss = torch.cat(penalty_loss)
         program_length = data['program'].shape[1]
-        history = {k: [[history[i*program_length+j][k]
-                        for j in range(program_length)]
+        history = {k: [history[i][k]
                        for i in range(batch_size)]
                    for k in history[0].keys()}
 
         output = F.log_softmax(attentions[:, :args.max_concepts], 1)
-        target = info.to(to_tensor(data['answer']))
+        targets = torch.cat(targets)
+        types = np.concatenate(types)
 
-        return output, target, history, penalty_loss
+        return output, targets, history, penalty_loss, types
 
-    def run_piece(self, data, processed, i, attentions, history, penalty_loss):
+    ''' fun one piece of data '''
+    def run_piece(self, data, processed, i,
+                  attentions, history, penalty_loss,
+                  targets, types):
+
+        ''' if dealing with a classification task '''
+
+        if data['type'][i] == 'classification':
+            if info.visual_dataset.mode == 'pretrained':
+                attentions[i] = self.classification_mlp(processed['scene'][i])
+            elif info.visual_dataset.mode == 'detected':
+                attentions[i] = self.classification_mlp(processed['recognized'][i][1])
+            penalty_loss[i] = info.to(data['object_classes'][i].float() * 0)
+            targets[i] = info.to(data['object_classes'][i])
+            types[i] = data['type'][i, None].repeat(data['object_lengths'][i])
+            return
+
+        ''' otherwise, dealing with QA tasks '''
 
         if info.visual_dataset.mode in ['encoded_sceneGraph', 'pretrained']:
             num_objects = data['scene'][i].shape[0]
         else:
             num_objects = data['object_lengths'][i]
 
+        ''' object features '''
         if info.visual_dataset.mode == 'encoded_sceneGraph':
             objects = self.embed_without_bg(processed['scene'][i])
         elif info.visual_dataset.mode == 'pretrained':
@@ -163,15 +195,19 @@ class HEmbedding(nn.Module):
         elif info.visual_dataset.mode == 'detected':
             objects = self.feature_mlp(processed['recognized'][i][1])
         objects = to_normalized(objects)
+
+        ''' concept embeddings '''
         all_concepts = processed['all_concepts']
         if self.model == 'add2':
             all_concepts = torch.cat([all_concepts[:, :self.obj_embed_dim],
                                       to_normalized(all_concepts[:, self.obj_embed_dim:])], dim=1)
 
+        ''' initializing attentions '''
         init_attention = lambda n: Variable(info.to(torch.ones(n))) * self.huge_value
         attention = {'concepts': init_attention(args.max_concepts),
                      'objects': init_attention(num_objects)}
 
+        ''' pre-processing: calculating all obj-feasible-concept logits '''
         concept_index = [i for i in range(args.max_concepts)
                          if info.protocol['concepts', i] in args.task_concepts['all_concepts']]
         operators = all_concepts[concept_index, :self.obj_embed_dim]
@@ -184,32 +220,36 @@ class HEmbedding(nn.Module):
         def attention_copy(attention_):
             return {k: v * 1 for k, v in attention_.items()}
 
+        ''' operation[Filter] '''
         def filter_op(attention_, concept_, arg_i):
             output = {}
+
+            ''' if h_embedding_add2 model: '''
             if self.model == 'add2':
                 output['concepts'] = min_fn(attention_['concepts'], self.logit_fn(
                   all_concepts, concept_[None]))
 
                 index = concept_index.index(arg_i)
                 believed_logit = logits[:, index]
-                #other_logits = min_fn(believed_logit, true_logits, same_class_logit)
                 other_logits = min_fn(believed_logit, true_logits)
                 other_logits[:, index] = -self.huge_value
                 submax_logit, subargmax = other_logits.max(1)
 
                 feasible_logit = believed_logit[:, index]
 
+                '''
+                conditinal probability:
+                    Pr(concept_i <- obj_j | ∃ concept_i'~concept_i, s.t. concept_i' <- obj_j)
+                '''
                 conditioned_logit = logit_exist(feasible_logit, submax_logit)
                 output['objects'] = min_fn(attention_['objects'],
                                            conditioned_logit)
 
+                ''' unused as in default args.penalty == 0 '''
                 sanity_loss = info.to(torch.tensor(0.))\
                     -log_or(feasible_logit, submax_logit).min()
-                '''
-                -log_or(-same_class_logit,
-                        logit_xand(believed_logit, true_logits)).min(0)[0].sum()\
-                '''
 
+                ''' logging for visualization '''
                 if 'logit_scatter' not in info.log:
                     self.init_logits()
                 info.log['logit_scatter']['feasible_logit'][arg_i] += feasible_logit.tolist()
@@ -234,6 +274,10 @@ class HEmbedding(nn.Module):
 
         penalty_loss_item = []
 
+        '''
+        running the program
+        definition of the modules are in dataset/tools/program_utils.py
+        '''
         for j, (op, arg) in enumerate(data['program'][i]):
             op_s = info.protocol['operations', int(op)]
             arg_s = info.protocol['concepts', int(arg)]
@@ -317,18 +361,39 @@ class HEmbedding(nn.Module):
             else:
                 raise Exception('no such operation %s supported' % op_s)
 
-            history[i*processed['program_length'] + j] = {'attention': attention}
+            history[i]['attention'].append(attention)
 
-        attentions[i] = attention['concepts'][:len(info.protocol['concepts'])]
-        penalty_loss[i] = sum(penalty_loss_item)\
-            if penalty_loss_item else info.to(torch.tensor(0.))
+        ''' modyfying values'''
+        attentions[i] = attention['concepts'][:len(info.protocol['concepts'])][None]
+        penalty_loss[i] = sum(penalty_loss_item)[None]\
+            if penalty_loss_item else info.to(torch.tensor(0.))[None]
+        targets[i] = info.to(to_tensor(data['answer'][i][None]))
+        types[i] = data['type'][i, None]
 
+    '''
+    (only used in ground-truth mode)
+    get object embeddings if they are not background
+        ('paddings' of value -1)
+    '''
     def embed_without_bg(self, x):
         if isinstance(x, list):
             x = info.to(x)
 
         x = x+1
         return self.attribute_embedding(Variable(x)).sum(-2)
+
+
+    def get_embedding(self, name, relational=False):
+        embedding = self.concept_embedding\
+            if not relational\
+            else self.relation_embedding
+        return embedding(Variable(info.to(to_tensor([
+            info.protocol['concepts', name]]))))[0]
+
+
+
+    ''' Codes for visualizing '''
+
 
 
     def visualize_embedding(self, relation_type=None):
@@ -366,7 +431,7 @@ class HEmbedding(nn.Module):
             for cat in info.vocabulary.records:
                 to_visualize[cat+'_concept'] = to_numpy(to_normalized(self.get_embedding(cat, False)))
 
-        if 'query' in args.subtask and 'add' in self.model:
+        if 'query' in args.subtasks and 'add' in self.model:
             for cat in info.vocabulary.records:
                 to_visualize[cat+'_operation'] = to_numpy(to_normalized(self.get_embedding(cat, True)))
 
@@ -458,12 +523,8 @@ class HEmbedding(nn.Module):
         self.savefig(names[2])
         plt.clf()
 
-    def get_embedding(self, name, relational=False):
-        embedding = self.concept_embedding\
-            if not relational\
-            else self.relation_embedding
-        return embedding(Variable(info.to(to_tensor([
-            info.protocol['concepts', name]]))))[0]
+
+    ''' Utility codes '''
 
 
     def init(self):

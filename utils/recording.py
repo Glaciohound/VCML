@@ -4,7 +4,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-import pickle
 args = sys.args
 info = sys.info
 
@@ -51,7 +50,7 @@ class Recording:
 
         for k, data_v in self.data.items():
             self.history[k].append(data_v)
-        if self.n % self.args.visualize_time == 0:
+        if self.n % self.args.visualize_interval == 0:
             self.visualize()
 
     def visualize(self):

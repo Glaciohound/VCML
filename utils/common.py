@@ -132,11 +132,11 @@ class tqdm:
         if self in info.pbars:
             info.pbars.remove(self)
 
-def endswith(x, postfixes):
-    for postfix in postfixes:
-        if x.endswith(postfix):
-            return False
-    return True
+def contains(x, elements):
+    for e in elements:
+        if e in x:
+            return True
+    return False
 
 def equal_ratio(x, y):
     match = equal_items(x, y)

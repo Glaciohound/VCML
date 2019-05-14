@@ -19,7 +19,7 @@ class Info():
                              x.cpu())
 
 class Config:
-    conceptual_tokens = ['synonym', 'antonym', 'isinstance']
+    conceptual_subtasks = ['synonym', 'antonym', 'isinstance']
     def __init__(self):
         setattr(sys, 'args', self)
         args = self.parse_args()
@@ -39,15 +39,15 @@ class Config:
 
         parser.add_argument('--task', default='toy',
                             choices=['gqa', 'toy', 'clevr_pt', 'clevr_dt'])
+        ''' current model: h_embedding_add2'''
         parser.add_argument('--model', default='h_embedding_add2',
                             choices=['relation_model',
                                      'u_embedding',
                                      'h_embedding_mul',
                                      'h_embedding_add',
                                      'h_embedding_add2'])
-        parser.add_argument('--similarity', default='cosine',
-                            choices=['cosine', 'square'])
 
+        ''' dir_add_argument() are for adding relative directories '''
         group = 'gqa'
         parser.add_argument('--gqa_data_dir', default='../../data/gqa')
         dir_add_argument('--image_dir', default='raw/allImages/images')
@@ -77,27 +77,35 @@ class Config:
                             default=4)
         parser.add_argument('--toy_categories', type=int, default=4)
 
-        parser.add_argument('--subtask', default='exist',
+        parser.add_argument('--subtasks', default='exist', nargs='+',
                             choices=['exist', 'filter', 'query',
-                                     'exist_synonym', 'filter_synonym',
-                                     'query_antonym', 'query_isinstance',
-                                     'query_isinstance_rev',
-                                     'visual_bias',
                                      'classification',
-                                     'filter_isinstance'])
-        parser.add_argument('--no_aid', action='store_true')
+                                     'synonym',
+                                     'isinstance',
+                                     ])
+
+        parser.add_argument('--no_aid', action='store_true',
+                            help='setting B in de-biasing experiments')
+        parser.add_argument('--visual_bias', nargs='+',
+                            help='adding visual bias', required=False,
+                            'in the form of `Attr_0:[Attr_1,Attr2 ...] ...`')
+        parser.add_argument('--synonym', nargs='+',
+                            help='concepts to add synonyms')
         parser.add_argument('--classification', nargs='+', required=False,
-                            choices=['color', 'shape', 'material', 'size'])
+                            choices=['color', 'shape', 'material', 'size'],
+                            help='what dimensions to consider when doing classification')
         parser.add_argument('--questionsPimage', type=int, default=1)
-        parser.add_argument('--train_config', nargs='*', required=False,
-                            help='in the form of \'Attr_0:Attr_1,Attr2 ...\'')
         parser.add_argument('--incremental_training', nargs='+', required=False,
                             choices=['full', 'partial', 'replaced'],
-                            default=['full'])
-        parser.add_argument('--val_concepts', nargs='+', required=False)
+                            default=['full'],
+                            help='partial for no asking particular concepts'
+                                'replaced for using a synonym as a substitute in tasks')
+        parser.add_argument('--val_concepts', nargs='+', required=False,
+                            help='concepts for validation')
 
         parser.add_argument('--max_sizeDataset', type=int, default=5000)
-        parser.add_argument('--box_scale', type=int, default=1024)
+        parser.add_argument('--box_scale', type=int, default=1024,
+                            help='bounding box size')
         parser.add_argument('--image_scale', type=int, default=256)
         parser.add_argument('--ipython', action='store_true')
 
@@ -106,9 +114,10 @@ class Config:
         parser.add_argument('--epochs', type=int, default=50, metavar='N',
                             help='number of epochs to train (default: 10)')
         parser.add_argument('--lr', type=float, default=0.001, metavar='LR')
-        parser.add_argument('--init_variance', type=float, default=0.001)
+        parser.add_argument('--init_variance', type=float, default=0.001,
+                            help='parameter initialization variance')
         parser.add_argument('--num_workers', default=1)
-        parser.add_argument('--no_train_shuffle', action='store_false')
+        parser.add_argument('--train_shuffle', action='store_true')
         parser.add_argument('--perfect_th', type=float, default=0.99)
         parser.add_argument('--visualize_dir', type=str, nargs='*',
                             default='../../data/visualize')
@@ -116,39 +125,47 @@ class Config:
                             default='../../data/log')
         parser.add_argument('--ckpt_dir', type=str,
                             default='../../data/gqa/checkpoints')
-        parser.add_argument('--visualize_time', type=int, default=500)
+        parser.add_argument('--visualize_interval', type=int, default=500)
+        parser.add_argument('--silent', action='store_true',
+                            help='turning off logging, visualizing and saving checkpoints')
+        parser.add_argument('--visualize_relation', type=str,
+                            help='metaconcept for visualization')
 
         parser.add_argument('--true_th', type=float, default=0.8)
         parser.add_argument('--temperature_init', type=float, default=10)
-        parser.add_argument('--non_bool_weight', type=float, default=0.01)
-        parser.add_argument('--penalty', type=float, default=0)
+        parser.add_argument('--conceptual_weight', type=float, default=0.01,
+                            help='weight for conceptual questions')
+        parser.add_argument('--penalty', type=float, default=0,
+                            help='weight for penalty losses')
 
         parser.add_argument('--no_validation', action='store_true')
         parser.add_argument('--random_seed', type=int)
         parser.add_argument('--ckpt', type=str)
         parser.add_argument('--name', type=str, default='trial')
 
-        parser.add_argument('--max_relations', type=int, default=100)
-        parser.add_argument('--max_concepts', type=int, default=50)
         parser.add_argument('--num_attributes', type=int, default=3000)
+        parser.add_argument('--max_concepts', type=int, default=50)
+        parser.add_argument('--embed_dim', type=int, default=60)
+        parser.add_argument('--hidden_dim', type=int, default=0)
+        parser.add_argument('--feature_dim', type=int, default=512)
+
+        parser.add_argument('--generalization_ratio', type=float, default=0.25,
+                            help='ratio of concepts for generalization')
+        parser.add_argument('--conceptual_question_ratio', type=float, default=0.2,
+                            help='ratio of conceptual questions')
+
+        # arguments below are deprecated
+        parser.add_argument('--max_relations', type=int, default=100)
         parser.add_argument('--size', type=int, default=4)
         parser.add_argument('--num_action', type=int, default=4)
         parser.add_argument('--size_dataset', type=int, default=5000)
-
-        parser.add_argument('--question_filter', default='None',
-                            choices=['None', 'existance'])
-
-        parser.add_argument('--embed_dim', type=int, default=60)
-        parser.add_argument('--identity_dim', type=int, default=50)
-        parser.add_argument('--hidden_dim', type=int, default=0)
         parser.add_argument('--attention_dim', type=int, default=5)
         parser.add_argument('--operation_dim', type=int, default=3)
-        parser.add_argument('--feature_dim', type=int, default=512)
         parser.add_argument('--size_attention', type=int, default=30)
         parser.add_argument('--identity_only', action='store_true')
-
-        parser.add_argument('--generalization_ratio', type=float, default=0.25)
-        parser.add_argument('--conceptual_question_ratio', type=float, default=0.2)
+        parser.add_argument('--identity_dim', type=int, default=50)
+        parser.add_argument('--question_filter', default='None',
+                            choices=['None', 'existance'])
 
         return parser.parse_args()
 
@@ -156,18 +173,19 @@ class Config:
         dicts = self.__dict__
         self.root_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
 
-        if self.visualize_dir:
-            self.visualize_dir = os.path.join(self.visualize_dir, self.model, self.name)
-            if os.path.exists(self.visualize_dir):
-                shutil.rmtree(self.visualize_dir)
-            os.makedirs(self.visualize_dir)
+        if not self.silent:
+            if self.visualize_dir:
+                self.visualize_dir = os.path.join(self.visualize_dir, self.model, self.name)
+                if os.path.exists(self.visualize_dir):
+                    shutil.rmtree(self.visualize_dir)
+                os.makedirs(self.visualize_dir)
 
-        self.log_dir = os.path.join(self.log_dir, self.model)
-        self.ckpt_dir = os.path.join(self.ckpt_dir, self.model)
-        if not os.path.exists(self.ckpt_dir):
-            os.makedirs(self.ckpt_dir)
-        if not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir)
+            self.log_dir = os.path.join(self.log_dir, self.model)
+            self.ckpt_dir = os.path.join(self.ckpt_dir, self.model)
+            if not os.path.exists(self.ckpt_dir):
+                os.makedirs(self.ckpt_dir)
+            if not os.path.exists(self.log_dir):
+                os.makedirs(self.log_dir)
 
         self.num_gpus = torch.cuda.device_count()
         self.use_cuda = self.num_gpus > 0
@@ -185,26 +203,22 @@ class Config:
             self.feature_dim = 256
 
         self.conceptual = False
-        for k in self.conceptual_tokens:
-            if k in self.subtask:
+        for k in self.conceptual_subtasks:
+            if k in self.subtasks:
                 self.conceptual = True
-        if self.subtask == 'visual_bias':
-            self.conceptual = True
 
         if self.no_validation:
             self.generalization_ratio = 0
         self.task_concepts = {}
 
-        if self.train_config:
-            if ':' in self.train_config[0]:
-                train_config = {}
-                for item in self.train_config:
+        if self.visual_bias:
+            if ':' in self.visual_bias[0]:
+                config = {}
+                for item in self.visual_bias:
                     main, attrs = item.split(':')
                     attrs = attrs.split(',')
-                    train_config[main] = attrs
-                self.train_config = train_config
-        else:
-            self.train_config = []
+                    config[main] = attrs
+                self.visual_bias = Config
 
     def print(self):
         pprint.pprint('Arguments: ------------------------')

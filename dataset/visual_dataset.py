@@ -33,7 +33,7 @@ class Dataset(torch.utils.data.Dataset):
             sceneGraph_port.register_vocabulary(cls.main_sceneGraphs)
 
         self.sceneGraphs = deepcopy(cls.main_sceneGraphs)
-        if args.subtask == 'visual_bias' and config == 'full':
+        if args.visual_bias and args.train_config and config == 'full':
             self.filter_fn =\
                 sceneGraph_port.customize_filterFn(args.train_config,
                                                    val_reverse=True,
@@ -87,7 +87,7 @@ class Dataset(torch.utils.data.Dataset):
             output = {}
             scene = self.sceneGraphs[index]
 
-            if args.subtask == 'classification' and 'objects' in scene:
+            if 'objects' in scene:
                 obj_inds = sorted(list(scene['objects'].keys()))
                 object_classes = ['-'.join([scene['objects'][ind][cat]
                                             for cat in args.classification])

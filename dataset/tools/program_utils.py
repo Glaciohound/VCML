@@ -227,6 +227,7 @@ def function2compactStr(f):
         f['argument'],
     )
 
+''' semantic translator for u_embedding'''
 def semantic2program_u(program_list):
 
     output = []
@@ -266,6 +267,8 @@ def semantic2program_u(program_list):
 
     return output
 
+
+''' semantic translator for h_embedding'''
 def semantic2program_h(program_list):
 
     output = []

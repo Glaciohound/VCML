@@ -26,16 +26,17 @@ from model.uEmbedding_model import UEmbedding
 from model.hEmbedding_model import HEmbedding
 from model.classification import Classification
 from utils.recording import Recording
-from utils.common import tqdm, endswith, equal_ratio, equal_items, recall
+from utils.common import tqdm, contains, equal_ratio, equal_items, recall
 from utils.basic import init_seed, save_log
 import numpy as np
 
 def run_batch(data):
-    output, target, history, penalty_loss = info.model(data)
+    output, target, history, penalty_loss, types = info.model(data)
     output = info.to(output)
-    is_bool = np.array(list(map(lambda x: endswith(x, ['query', 'isinstance']),
-                                data['type'].tolist()))).astype(float)
-    weight = info.to(torch.Tensor(is_bool + args.non_bool_weight * (1 - is_bool)))
+    conceptual = np.array(list(map(lambda x: contains(x, args.conceptual_subtasks),
+                                   types.tolist()))).astype(float)
+    weight = info.to(torch.Tensor(conceptual * args.conceptual_weight
+                                  + 1 - conceptual))
 
     if info.new_torch:
         losses = info.loss_fn(output, target, reduction='none')
@@ -47,12 +48,8 @@ def run_batch(data):
 
     accuracy = equal_ratio(answers, target)
 
-    if args.subtask != 'classification':
-        loss = (weight * (losses + penalty_loss * args.penalty)).sum()
-    else:
-        loss = losses.sum()
+    loss = (weight * (losses + penalty_loss * args.penalty)).sum()
     output = {'loss': loss, 'accuracy': accuracy,
-              'true_th': info.model.true_th,
               }
 
     if 'yes' in info.question_dataset.answers:
@@ -116,12 +113,9 @@ def init():
 def run():
     for info.epoch in tqdm(range(1, args.epochs + 1)):
 
-        if args.visualize_dir:
+        if args.visualize_dir and not args.silent:
             if not isinstance(info.model, Classification):
-                info.model.visualize_embedding(None if not args.conceptual
-                                               else args.subtask.split('_')[1]
-                                               if args.subtask != 'visual_bias'
-                                               else 'isinstance',)
+                info.model.visualize_embedding(args.visualize_relation)
                 info.model.visualize_logit()
             info.train_recording.visualize()
             info.val_recording.visualize()
@@ -129,16 +123,17 @@ def run():
         train_epoch()
         if not args.no_validation:
             val_epoch()
-        info.model.save(args.name)
 
         info.scheduler.step(info.train_recording.data['loss'])
         info.dataset_scheduler.step(info.train_recording.data['accuracy'])
 
         info.val_recording.clear()
 
-        save_log(os.path.join(args.log_dir, args.name+'.pkl'),
-                info.val_recording.history,
-                args.__dict__)
+        if not args.silent:
+            info.model.save(args.name)
+            save_log(os.path.join(args.log_dir, args.name+'.pkl'),
+                    info.val_recording.history,
+                    args.__dict__)
 
 def main():
     info.embed = embed
@@ -154,13 +149,12 @@ def main():
                                             question_dataset.Dataset)
     args.names = info.vocabulary.concepts
 
-    if args.subtask == 'classification':
-        info.model = Classification()
-    elif args.model == 'relation_model':
+    if args.model == 'relation_model':
         info.model = RelationModel()
     elif args.model == 'u_embedding':
         info.model = UEmbedding()
-    elif 'h_embedding' in args.model:
+    elif args.model in ['h_embedding_mul', 'h_embedding_add',
+                        'h_embedding_add2']:
         info.model = HEmbedding()
     info.loss_fn = F.nll_loss
 
