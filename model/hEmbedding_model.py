@@ -30,7 +30,6 @@ class HEmbedding(nn.Module):
         elif args.model == 'h_embedding_add2':
             self.model = 'add2'
         self.build()
-        self.init()
 
     def build(self):
         if self.model == 'add2':
@@ -41,39 +40,37 @@ class HEmbedding(nn.Module):
         self.attribute_embedding = self.build_embedding(args.num_attributes, self.obj_embed_dim,
                                                         'attribute', 0)
         self.feature_mlp = self.build_mlp(args.feature_dim, self.obj_embed_dim,
-                                             'feature', args.hidden_dim1)
+                                             'feature', args.hidden_dim)
 
         self.concept_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
-                                                      'concept', args.hidden_dim2)
+                                                      'concept', args.hidden_dim)
 
         self.relation_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
                                                     'relation', 0, matrix=self.model=='mul')
 
         self.resnet_model = Attribute_Network()
 
-        if args.similarity == 'cosine':
-            self.similarity = F.cosine_similarity
-            self.true_th_ = nn.Parameter(info.to(torch.Tensor([args.true_th])))
-        else:
-            self.similarity = lambda x, y: -(x-y).pow(2).sum()
-            self.true_th_ = -1
-
+        self.true_th_ = nn.Parameter(info.to(torch.Tensor([args.true_th])))
         self.same_class_th_ = nn.Parameter(info.to(torch.Tensor([args.true_th])))
-        self.max_signal = nn.Parameter(info.to(torch.Tensor([args.temperature_init])))
+        self.temperature_ = nn.Parameter(info.to(torch.Tensor([args.temperature_init])))
+
+        self.similarity = F.cosine_similarity
         self.scale = lambda x: self.temperature * (x-self.true_th)
         self.huge_value = 100
 
     @property
     def temperature(self):
-        return self.max_signal.exp().detach()
+        return self.temperature_.detach()
 
     @property
     def true_th(self):
         return self.true_th_.detach()
+        #return self.true_th_
 
     @property
     def same_class_th(self):
         return self.same_class_th_.detach()
+
 
     def logit_fn(self, *arg, threshold=None, **kwarg):
         if not threshold:
@@ -117,14 +114,13 @@ class HEmbedding(nn.Module):
                 return oneD_embedding.view(matrix_shape)
             return matrix_embedding
 
+
     def forward(self, data):
         batch_size = data['answer'].shape[0]
         program_length = data['program'][0].shape[0]
         processed = dict()
 
         processed['concept_arguments'] = self.concept_embedding(info.to(data['program'])[:, :, 1])
-        #processed['relation_arguments'] = (self.relation_embedding if self.model != 'add2'
-        #                                   else self.concept_embedding)(info.to(data['program'])[:, :, 1])
         processed['relation_arguments'] = self.relation_embedding(info.to(data['program'])[:, :, 1])
         processed['all_concepts'] = info.to(self.concept_embedding(Variable(info.to(torch.arange(args.max_concepts)).long())))
         processed['program_length'] = program_length
@@ -165,8 +161,7 @@ class HEmbedding(nn.Module):
         elif info.visual_dataset.mode == 'pretrained':
             objects = self.feature_mlp(processed['scene'][i])
         elif info.visual_dataset.mode == 'detected':
-            objects = processed['recognized'][i][1][:, :self.obj_embed_dim]
-
+            objects = self.feature_mlp(processed['recognized'][i][1])
         objects = to_normalized(objects)
         all_concepts = processed['all_concepts']
         if self.model == 'add2':
@@ -177,6 +172,15 @@ class HEmbedding(nn.Module):
         attention = {'concepts': init_attention(args.max_concepts),
                      'objects': init_attention(num_objects)}
 
+        concept_index = [i for i in range(args.max_concepts)
+                         if info.protocol['concepts', i] in args.task_concepts['all_concepts']]
+        operators = all_concepts[concept_index, :self.obj_embed_dim]
+        latters = all_concepts[concept_index, self.obj_embed_dim:]
+        projected = objects[:, None] + operators[None, :]
+
+        logits = self.logit_fn(projected[:, :, None], latters[None, None], dim=3)
+        true_logits = torch.diagonal(logits, dim1=1, dim2=2)
+
         def attention_copy(attention_):
             return {k: v * 1 for k, v in attention_.items()}
 
@@ -186,49 +190,38 @@ class HEmbedding(nn.Module):
                 output['concepts'] = min_fn(attention_['concepts'], self.logit_fn(
                   all_concepts, concept_[None]))
 
-                projected = objects + concept_[:self.obj_embed_dim]
-                concept_index = [i for i in range(args.max_concepts)
-                                 if info.protocol['concepts', i] in args.task_concepts['all_concepts']]
-                to_compare = all_concepts[concept_index, self.obj_embed_dim:]
-                all_projected = objects[:, None] +\
-                    all_concepts[None, concept_index, :self.obj_embed_dim]
-                same_class_logit = self.logit_fn(concept_[None, :self.obj_embed_dim],
-                                                 all_concepts[concept_index, :self.obj_embed_dim],
-                                                 threshold=self.same_class_th)
-                concept_ = concept_[None, self.obj_embed_dim:]
-
-                feasible_logit = self.logit_fn(projected, concept_)
-                believed_logit = self.logit_fn(projected[:, None], to_compare[None], dim=2)
-                true_logit = self.logit_fn(all_projected, to_compare[None], dim=2)
-                #revised_logit = self.logit_fn(all_projected, concept_[None], dim=2)
-
-                other_logits = min_fn(believed_logit, true_logit, same_class_logit)
-                other_logits[:, concept_index.index(arg_i)] = -self.huge_value
+                index = concept_index.index(arg_i)
+                believed_logit = logits[:, index]
+                #other_logits = min_fn(believed_logit, true_logits, same_class_logit)
+                other_logits = min_fn(believed_logit, true_logits)
+                other_logits[:, index] = -self.huge_value
                 submax_logit, subargmax = other_logits.max(1)
 
-                this_logit = feasible_logit
+                feasible_logit = believed_logit[:, index]
 
-                conditioned_logit = logit_exist(this_logit, submax_logit)
+                conditioned_logit = logit_exist(feasible_logit, submax_logit)
                 output['objects'] = min_fn(attention_['objects'],
                                            conditioned_logit)
 
                 sanity_loss = info.to(torch.tensor(0.))\
-                    -log_or(this_logit, submax_logit).min()\
-                    -log_or(-same_class_logit,
-                            logit_xand(believed_logit, true_logit)).min(0)[0].sum()\
+                    -log_or(feasible_logit, submax_logit).min()
+                '''
+                -log_or(-same_class_logit,
+                        logit_xand(believed_logit, true_logits)).min(0)[0].sum()\
+                '''
 
                 if 'logit_scatter' not in info.log:
                     self.init_logits()
                 info.log['logit_scatter']['feasible_logit'][arg_i] += feasible_logit.tolist()
                 info.log['logit_scatter']['submax_logit'][arg_i] += submax_logit.tolist()
                 info.log['logit_scatter']['believed_logit'][arg_i] += believed_logit[0].tolist()
-                info.log['logit_scatter']['ref'][arg_i] += true_logit[0].tolist()
+                info.log['logit_scatter']['ref'][arg_i] += true_logits[0].tolist()
                 get_index = lambda x: args.names.index(x)
                 for i in range(subargmax.shape[0]):
                     if submax_logit[i] > feasible_logit[i]:
                         info.log['submax_match']\
                             [get_index(info.protocol['concepts', int(arg_i)]),
-                             get_index(info.protocol['concepts', concept_index[int(subargmax[i])]])] += 1
+                            get_index(info.protocol['concepts', concept_index[int(subargmax[i])]])] += 1
 
             else:
                 output['objects'] = self.logit_fn(objects, concept_[None])
@@ -304,12 +297,12 @@ class HEmbedding(nn.Module):
 
                 elif self.model == 'add':
                     transferred = gather + processed['relation_arguments'][i, j]
-                    output = self.scale(self.similarity(to_compare, transferred[None]))
+                    output = self.logit_fn(to_compare, transferred[None])
 
                 elif self.model == 'add2':
                     transferred = gather + processed['relation_arguments'][i, j][:dim]
                     to_compare = to_compare[:, -dim:]
-                    output = self.scale(self.similarity(to_compare, transferred[None]))
+                    output = self.logit_fn(to_compare, transferred[None])
 
                 assign(attention, -self.huge_value)
                 if op_s.endswith('c'):
@@ -330,7 +323,6 @@ class HEmbedding(nn.Module):
         penalty_loss[i] = sum(penalty_loss_item)\
             if penalty_loss_item else info.to(torch.tensor(0.))
 
-
     def embed_without_bg(self, x):
         if isinstance(x, list):
             x = info.to(x)
@@ -338,9 +330,6 @@ class HEmbedding(nn.Module):
         x = x+1
         return self.attribute_embedding(Variable(x)).sum(-2)
 
-    @property
-    def exist_th(self):
-        return self.train_exist_th if self.training else self.val_exist_th
 
     def visualize_embedding(self, relation_type=None):
         to_visualize = {}
@@ -353,7 +342,6 @@ class HEmbedding(nn.Module):
         names = info.vocabulary.concepts
 
         for name in names:
-
             vec = to_numpy(self.get_embedding(name))
             if self.model != 'add2':
                 vec_norm = to_normalized(vec)
@@ -470,22 +458,25 @@ class HEmbedding(nn.Module):
         self.savefig(names[2])
         plt.clf()
 
-
     def get_embedding(self, name, relational=False):
         embedding = self.concept_embedding\
             if not relational\
             else self.relation_embedding
-            #if not relational or self.model == 'add2'\
         return embedding(Variable(info.to(to_tensor([
             info.protocol['concepts', name]]))))[0]
 
+
     def init(self):
+        inited = []
         for name, param in self.named_parameters():
-            if name not in ['max_signal', 'true_th_']:
+            if not name.startswith('resnet_model')\
+                    and name not in ['temperature_', 'true_th_', 'same_class_th_']:
+                inited.append(name)
                 if info.new_torch:
                     init.normal_(param, 0, args.init_variance)
                 else:
                     init.normal(param, 0, args.init_variance)
+        print('initalized parameters:', inited)
         self.new_optimizer()
 
     def new_optimizer(self):

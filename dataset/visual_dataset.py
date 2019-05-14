@@ -35,7 +35,7 @@ class Dataset(torch.utils.data.Dataset):
         self.sceneGraphs = deepcopy(cls.main_sceneGraphs)
         if args.subtask == 'visual_bias' and config == 'full':
             self.filter_fn =\
-                sceneGraph_port.customize_filterFn(args.bias_config,
+                sceneGraph_port.customize_filterFn(args.train_config,
                                                    val_reverse=True,
                                                    )
             sceneGraph_port.filter_sceneGraphs(
@@ -84,37 +84,40 @@ class Dataset(torch.utils.data.Dataset):
             return entry
 
         elif args.group in ['clevr', 'toy']:
+            output = {}
             scene = self.sceneGraphs[index]
+
+            if args.subtask == 'classification' and 'objects' in scene:
+                obj_inds = sorted(list(scene['objects'].keys()))
+                object_classes = ['-'.join([scene['objects'][ind][cat]
+                                            for cat in args.classification])
+                                for ind in obj_inds]
+                object_classes = np.array([info.vocabulary['classes', obj_class]
+                                           for obj_class in object_classes])
+                output['object_classes'] = object_classes
+
             if self.mode == 'sceneGraph':
-                return {'scene_plain': scene}
+                output.update({'scene_plain': scene})
 
             elif self.mode == 'encoded_sceneGraph':
-                return {'scene':
-                        self.encode_sceneGraphs(scene)}
+                output.update({'scene': self.encode_sceneGraphs(scene)})
 
             elif self.mode == 'pretrained':
-                return {'scene': self.get_features(scene)}
+                output.update({'scene': self.get_features(scene),
+                               'object_lengths': len(scene['objects'])})
 
             elif self.mode == 'detected':
-                if not scene.get('matched', False):
-                    image_utils.match_objects(scene, inplace=True)
                 image = Image.open(scene['image_filename']).convert('RGB')
                 shape = image.size
                 image_transformed = self.transform_pipeline(image).numpy()
                 bboxes = image_utils.annotate_objects(
                     scene, shape,
                     (args.image_scale, args.image_scale))['objects']
-                obj_inds = sorted(list(scene['objects'].keys()))
-                object_classes = ['-'.join([scene['objects'][ind][cat]
-                                            for cat in args.classification])
-                                  for ind in obj_inds]
-                object_classes = np.array([info.vocabulary['classes', obj_class]
-                                           for obj_class in object_classes])
-                return {'image': image_transformed,
-                        'objects': bboxes,
-                        'object_lengths': bboxes.shape[0],
-                        'object_classes': object_classes,
-                        }
+                output.update({'image': image_transformed,
+                               'objects': bboxes,
+                               'object_lengths': bboxes.shape[0]})
+
+            return output
 
 
     @classmethod
@@ -168,10 +171,14 @@ class Dataset(torch.utils.data.Dataset):
 
         if args.group == 'clevr':
             sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
+
             if args.task.endswith('pt'):
-                sceneGraphs = sceneGraph_port.merge_sceneGraphs(sceneGraphs,
-                                                                sceneGraph_port.load_multiple_sceneGraphs(args.feature_sceneGraph_dir))
-            elif args.task.endswith('dt'):
+                sceneGraphs = sceneGraph_port.merge_sceneGraphs(
+                    sceneGraph_port.load_multiple_sceneGraphs(args.feature_sceneGraph_dir),
+                    sceneGraphs,
+                )
+
+            if args.task.endswith('dt'):
                 all_imageNames = image_utils.get_imageNames(args.image_dir)
                 for imageName in all_imageNames:
                     image_id, default_scene = sceneGraph_port.default_scene(imageName)
@@ -206,6 +213,9 @@ class Dataset(torch.utils.data.Dataset):
             self.mode = mode
         else:
             raise Exception('invalid mode: %s' % mode)
+        if mode in ['detected']:
+            for image_id, scene in self.sceneGraphs.items():
+                image_utils.match_objects(scene, inplace=True)
 
     def __len__(self):
         return min(len(self.index), args.max_sizeDataset)
@@ -222,7 +232,7 @@ class Dataset(torch.utils.data.Dataset):
         return datas
 
     def get_features(self, scene):
-        return np.array(scene['features'])
+        return scene['features']
 
     def encode_sceneGraphs(self, scene):
         features = []
@@ -235,7 +245,3 @@ class Dataset(torch.utils.data.Dataset):
         for x in features:
             x += [-1 for i in range(dim_features - len(x))]
         return np.array(features)
-
-    def match_all_objects(self):
-        for s in self.sceneGraphs.values():
-            image_utils.match_objects(s, inplace=True)

@@ -52,7 +52,6 @@ def run_batch(data):
     else:
         loss = losses.sum()
     output = {'loss': loss, 'accuracy': accuracy,
-              'temperature': info.model.temperature,
               'true_th': info.model.true_th,
               }
 
@@ -106,17 +105,27 @@ def val_epoch():
     info.pbars[0].write('[VAL]\t%s' % recording.strings()[0][:100])
 
 def init():
-    if args.no_random:
-        init_seed()
+    if args.random_seed:
+        init_seed(args.random_seed)
     info.model.init()
-    if args.use_cuda:
-        info.to(info.model)
+    info.to(info.model)
     info.train_recording = Recording(name='train', mode='decaying')
     info.val_recording = Recording(name='val', mode='average')
     info.dataset_scheduler = dataset_scheduler.DatasetScheduler()
 
 def run():
     for info.epoch in tqdm(range(1, args.epochs + 1)):
+
+        if args.visualize_dir:
+            if not isinstance(info.model, Classification):
+                info.model.visualize_embedding(None if not args.conceptual
+                                               else args.subtask.split('_')[1]
+                                               if args.subtask != 'visual_bias'
+                                               else 'isinstance',)
+                info.model.visualize_logit()
+            info.train_recording.visualize()
+            info.val_recording.visualize()
+
         train_epoch()
         if not args.no_validation:
             val_epoch()
@@ -126,15 +135,6 @@ def run():
         info.dataset_scheduler.step(info.train_recording.data['accuracy'])
 
         info.val_recording.clear()
-        if args.visualize_dir:
-            if not isinstance(info.model, Classification):
-                info.model.visualize_embedding(None if not args.conceptual
-                                            else args.subtask.split('_')[1]
-                                            if args.subtask != 'visual_bias'
-                                            else 'isinstance',)
-                info.model.visualize_logit()
-            info.train_recording.visualize()
-            info.val_recording.visualize()
 
         save_log(os.path.join(args.log_dir, args.name+'.pkl'),
                 info.val_recording.history,
@@ -146,8 +146,13 @@ def main():
     info.plt = plt
     info.np = np
 
-    if args.no_random:
-        init_seed()
+    if args.random_seed:
+        init_seed(args.random_seed)
+
+    info.dataset_all = dataset_scheduler.\
+        build_incremental_training_datasets(visual_dataset.Dataset,
+                                            question_dataset.Dataset)
+    args.names = info.vocabulary.concepts
 
     if args.subtask == 'classification':
         info.model = Classification()
@@ -159,17 +164,13 @@ def main():
         info.model = HEmbedding()
     info.loss_fn = F.nll_loss
 
-    info.dataset_all = dataset_scheduler.\
-        build_incremental_training_datasets(visual_dataset.Dataset,
-                                            question_dataset.Dataset)
-    args.names = info.vocabulary.concepts
-
     args.print()
     info.pbars = []
     info.log = {}
 
     init()
     run()
+    embed()
 
 if __name__ == '__main__':
     main()

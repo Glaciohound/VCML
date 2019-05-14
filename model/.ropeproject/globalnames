@@ -1,8 +1,8 @@
-€}q(Uscene_graph]q(UinfoqUDEBUGqU
-SceneGraphqeU
-transition]q(Uweighted_lossqU
-TransitionqUtestq	Utrainq
-UmainqU
-first_lossqUDatasetqU	last_lossqeUresnet]qUReasoningV1ModelqaU
-functional]q(UCOOR_TO_LEN_CORRqUbox_iouqUgenerate_intersection_mapqUgenerate_roi_pool_binsqUbox_sizeqUbox_intersectionqUgenerate_union_boxqeUsimple_classifier]qURelationModelqaUhEmbedding_model]q(U
-HEmbeddingqUargsqUinfoqeUrelation_model]qhau.
+€}q(Uclassification]q(UinfoqUargsqUClassificationqeUscene_graph]q(UinfoqUDEBUGqU
+SceneGraphq	eU
+transition]q
+(Uweighted_lossqU
+TransitionqUtestqUtrainqUmainqU
+first_lossqUDatasetqU	last_lossqeUresnet]qUReasoningV1ModelqaU
+functional]q(UCOOR_TO_LEN_CORRqUbox_iouqUgenerate_intersection_mapqUgenerate_roi_pool_binsqUbox_sizeqUbox_intersectionqUgenerate_union_boxqeUsimple_classifier]qURelationModelqaUhEmbedding_model]q(U
+HEmbeddingq Uargsq!Uinfoq"eUrelation_model]q#hau.

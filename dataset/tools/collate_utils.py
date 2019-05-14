@@ -17,6 +17,47 @@ from utils.common import to_tensor
 def get_collateFn(setting):
 
     def collateFn(datas):
+        def feasible(_data, expression):
+
+            if not expression:
+                return True
+
+            if expression[0] == 'or':
+                for item in expression[1]:
+                    if (isinstance(item, bool) and item) or\
+                            feasible(_data, item):
+                        return True
+                return False
+
+            elif expression[0] == 'equal_in_length':
+                value = None
+                for item in expression[1]:
+                    if isinstance(item, int) or isinstance(item, float):
+                        this_value = item
+                    elif isinstance(item, str):
+                        this_value = _data.get(item, None)
+                        if isinstance(this_value, list):
+                            this_value = len(this_value)
+                        elif isinstance(this_value, torch.Tensor) or\
+                            isinstance(this_value, np.ndarray):
+                            this_value = this_value.shape[0]
+                    else:
+                        raise Exception('can not read {}'.format(item))
+
+                    if not value:
+                        value = this_value
+                    elif not this_value:
+                        pass
+                    elif value != this_value:
+                        return False
+                return True
+
+            else:
+                raise Exception('no supported: {}'.format(expression))
+
+        datas = [_data for _data in datas
+                 if feasible(_data, setting.get('filter_fn', None))]
+
         keys = datas[0].keys()
         assert set(keys).issubset(set(setting.keys())),\
             'mismatching collate setting and data'

@@ -89,7 +89,7 @@ class Config:
         parser.add_argument('--classification', nargs='+', required=False,
                             choices=['color', 'shape', 'material', 'size'])
         parser.add_argument('--questionsPimage', type=int, default=1)
-        parser.add_argument('--train_config', nargs='+', required=False,
+        parser.add_argument('--train_config', nargs='*', required=False,
                             help='in the form of \'Attr_0:Attr_1,Attr2 ...\'')
         parser.add_argument('--incremental_training', nargs='+', required=False,
                             choices=['full', 'partial', 'replaced'],
@@ -106,7 +106,7 @@ class Config:
         parser.add_argument('--epochs', type=int, default=50, metavar='N',
                             help='number of epochs to train (default: 10)')
         parser.add_argument('--lr', type=float, default=0.001, metavar='LR')
-        parser.add_argument('--init_variance', type=float, default=0.01)
+        parser.add_argument('--init_variance', type=float, default=0.001)
         parser.add_argument('--num_workers', default=1)
         parser.add_argument('--no_train_shuffle', action='store_false')
         parser.add_argument('--perfect_th', type=float, default=0.99)
@@ -118,13 +118,13 @@ class Config:
                             default='../../data/gqa/checkpoints')
         parser.add_argument('--visualize_time', type=int, default=500)
 
-        parser.add_argument('--true_th', type=float, default=0.9)
-        parser.add_argument('--temperature_init', type=float, default=2)
-        parser.add_argument('--non_bool_weight', type=float, default=0.1)
+        parser.add_argument('--true_th', type=float, default=0.8)
+        parser.add_argument('--temperature_init', type=float, default=10)
+        parser.add_argument('--non_bool_weight', type=float, default=0.01)
         parser.add_argument('--penalty', type=float, default=0)
 
         parser.add_argument('--no_validation', action='store_true')
-        parser.add_argument('--no_random', action='store_true')
+        parser.add_argument('--random_seed', type=int)
         parser.add_argument('--ckpt', type=str)
         parser.add_argument('--name', type=str, default='trial')
 
@@ -140,8 +140,7 @@ class Config:
 
         parser.add_argument('--embed_dim', type=int, default=60)
         parser.add_argument('--identity_dim', type=int, default=50)
-        parser.add_argument('--hidden_dim1', type=int, default=0)
-        parser.add_argument('--hidden_dim2', type=int, default=0)
+        parser.add_argument('--hidden_dim', type=int, default=0)
         parser.add_argument('--attention_dim', type=int, default=5)
         parser.add_argument('--operation_dim', type=int, default=3)
         parser.add_argument('--feature_dim', type=int, default=512)
@@ -203,7 +202,9 @@ class Config:
                     main, attrs = item.split(':')
                     attrs = attrs.split(',')
                     train_config[main] = attrs
-            self.train_config = train_config
+                self.train_config = train_config
+        else:
+            self.train_config = []
 
     def print(self):
         pprint.pprint('Arguments: ------------------------')

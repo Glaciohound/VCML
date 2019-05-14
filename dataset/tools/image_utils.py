@@ -91,10 +91,8 @@ def match_objects(scene, inplace=False):
         detection_index = closest[i]
         obj['mask'] = scene['objects_detection'][detection_index]['mask']
         obj['bbox'] = boxes[detection_index]
-        obj['detection_index'] = detection_index
 
-    output['objects_detection'] = np.array(output['objects_detection'])\
-        [closest].tolist()
+    output['objects_detection'] = np.array(output['objects_detection'])[closest].tolist()
     output['matched'] = True
 
     return output

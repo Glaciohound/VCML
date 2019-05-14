@@ -98,7 +98,8 @@ class Protocol:
                 if k!='total'}
 
     def belongs_to(self, name):
-        cats = [cat for cat in self.records if name in self[cat]]
+        cats = [cat for cat, content in self.records.items()
+                if name in content]
         if len(cats) > 1:
             raise Exception('%s belongs to multiple categories')
         else:
@@ -108,8 +109,5 @@ class Protocol:
     def concepts(self):
         names = []
         for cat, attributes in sorted(self.records.items()):
-            names += attributes
-        if 'attr_00' in names:
-            return sorted(names)
-        else:
-            return names
+            names += sorted(attributes)
+        return names

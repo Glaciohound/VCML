@@ -20,7 +20,7 @@ def get_dataloaders(dataset_kit):
 
     val_loader = DataLoader(
         dataset=dataset_kit['val'],
-        batch_size=args.num_gpus,
+        batch_size=args.batch_size * args.num_gpus,
         shuffle=False,
         **kwargs
     )

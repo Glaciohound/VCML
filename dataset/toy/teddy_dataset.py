@@ -6,6 +6,43 @@ import sys
 args = sys.args
 info = sys.info
 
+
+synonym_dict = {
+    'toy': {
+        'attr_00': ['attr_00_syn', 'attr_00'],
+        'attr_01': ['attr_01_syn', 'attr_01'],
+        'attr_02': ['attr_02_syn', 'attr_02'],
+        'attr_03': ['attr_03_syn', 'attr_03'],
+        'attr_04': ['attr_04_syn', 'attr_04'],
+        'attr_05': ['attr_05_syn', 'attr_05'],
+        'attr_06': ['attr_06_syn', 'attr_06'],
+        'attr_07': ['attr_07_syn', 'attr_07'],
+        'attr_08': ['attr_08_syn', 'attr_08'],
+        'attr_09': ['attr_09_syn', 'attr_09'],
+        'attr_10': ['attr_10_syn', 'attr_10'],
+        'attr_11': ['attr_11_syn', 'attr_11'],
+        'attr_12': ['attr_12_syn', 'attr_12'],
+        'attr_13': ['attr_13_syn', 'attr_13'],
+        'attr_14': ['attr_14_syn', 'attr_14'],
+        'attr_15': ['attr_15_syn', 'attr_15'],
+    },
+    'clevr': {
+        'thing': ['thing', 'object'],
+        'sphere': ['sphere', 'ball'],
+        'cube': ['cube', 'block'],
+        'large': ['large', 'big'],
+        'small': ['small', 'tiny'],
+        'metal': ['metallic', 'metal', 'shiny'],
+        'rubber': ['rubber', 'matte'],
+        'left': ['left of', 'to the left of', 'on the left side of'],
+        'right': ['right of', 'to the right of', 'on the right side of'],
+        'behind': ['behind'],
+        'front': ['in front of'],
+        'above': ['above'],
+        'below': ['below'],
+    }
+}
+
 class ToyDataset:
 
     def __init__(self):
@@ -44,24 +81,31 @@ class ToyDataset:
         questions = {}
         all_concepts = {k: [k] for k in info.vocabulary['total']}
         if config == 'partial':
-            for attr in args.bias_config:
+            for attr in args.train_config:
                 if attr in all_concepts:
                     all_concepts.pop(attr)
         elif config == 'replaced':
-            for attr in args.bias_config:
+            for attr in args.train_config:
                 if attr in all_concepts:
                     all_concepts[attr] = [attr+'_syn']
         elif 'synonym' in args.subtask:
-            for attr in all_concepts:
-                all_concepts[attr] = [attr, attr+'_syn']
-                all_concepts[attr+'_syn'] = [attr, attr+'_syn']
+            _all_concepts = {}
+            for attr in all_concepts.keys():
+                if attr in args.train_config:
+                    syns = synonym_dict[args.group][attr]
+                else:
+                    syns = [attr]
+                for s in syns:
+                    info.vocabulary[info.vocabulary.belongs_to(attr), s]
+                    _all_concepts[s] = syns
+            all_concepts = _all_concepts
 
         args.task_concepts['all_concepts'] = set(list(all_concepts.keys())+
                                                  [at for attrs in all_concepts.values()
                                                   for at in attrs])
 
-        if 'synonym' in args.subtask or 'query_isinstance' in args.subtask:
-                #or args.subtask == 'filter_isinstance':
+        if 'synonym' in args.subtask or 'query_isinstance' in args.subtask\
+                or args.subtask == 'filter_isinstance':
             task_concepts = {}
             if args.val_concepts:
                 assert set(args.val_concepts).issubset(set(all_concepts)), 'outside concept set'

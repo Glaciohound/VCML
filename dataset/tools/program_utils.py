@@ -276,11 +276,6 @@ def semantic2program_h(program_list):
     def convert_operation(x):
         output[-1]['operation'] = x
 
-    def add_verify(op, arg):
-        add_operation('transfer', op)
-        add_operation('verify', arg)
-        add_operation('exist', '<NULL>')
-
     for op in program_list:
         operation, category, argument, obj = preprocess_operation(op)
 
@@ -301,11 +296,13 @@ def semantic2program_h(program_list):
         elif operation == 'isinstance':
             add_operation('transfer_cc', operation)
 
-        elif operation == 'exist':
+        elif operation == 'synonym':
+            add_operation('transfer_cc', operation)
+            add_operation('verify', argument)
             add_operation('exist', '<NULL>')
 
-        elif operation in ['synonym', 'antonym']:
-            add_verify(operation, argument)
+        elif operation == 'exist':
+            add_operation('exist', '<NULL>')
 
         elif operation == '<NULL>':
             add_operation('<NULL>', '<NULL>')

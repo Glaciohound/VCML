@@ -10,9 +10,13 @@ for filename in glob(os.path.join('../../data/log/',
                                   sys.argv[1], '*')):
     with open(filename, 'rb') as f:
         history, args = pickle.load(f)
-    right = np.array(history['isinstance_right'])
+    if 'isinstance_right' in history:
+        right = np.array(history['isinstance_right'])
+    else:
+        right = np.array(history['accuracy'])
     results.append((args['name'],
-                    'cur: {}, mean: {}'.format(right[-1], right.mean())))
+                    {'cur': right[-1], 'mean': right.mean()}
+                    ))
 
 
 def filter(*pieces):

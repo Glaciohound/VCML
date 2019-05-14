@@ -43,6 +43,11 @@ class Dataset(torch.utils.data.Dataset):
             'objects': {'type': 'concat', 'axis': 0, 'tensor': True},
             'object_lengths': {'type': 'stack', 'tensor': True},
             'object_classes': {'type': 'concat', 'axis': 0, 'tensor': True},
+            'filter_fn': ('or', (
+                args.subtask!='classification',
+                ('equal_in_length',
+                 ('object_lengths', 'scene_plain', 'scene', 'object_classes')),
+            ))
         }
         cls.collate_fn = collate_utils.get_collateFn(cls.collate_setting)
 

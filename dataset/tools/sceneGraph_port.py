@@ -73,11 +73,7 @@ def merge_sceneGraphs(x, y):
             scene_x = x[image_id]
             scene_y = y[image_id]
             for k in union(scene_x.keys(), scene_y.keys()):
-                if k != 'objects':
-                    scene[k] = scene_x[k] if k in scene_x else scene_y[k]
-                else:
-                    scene[k] = max(scene_x[k], scene_y[k],
-                                   key=lambda z: len(pick_one(z)))
+                scene[k] = scene_x[k] if k in scene_x else scene_y[k]
             sceneGraphs[image_id] = scene
     return sceneGraphs
 
@@ -128,9 +124,9 @@ def customize_filterFn(config, val_reverse=False):
         reverse = val and val_reverse
 
         for obj in scene['objects'].values():
-            for main, subs in config.items():
-                attrs = set([at for at in obj.values()
+            attrs = set([at for at in obj.values()
                              if isinstance(at, str)])
+            for main, subs in config.items():
                 if main in attrs:
                     if not reverse:
                         feasible_item = False
