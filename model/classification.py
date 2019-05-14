@@ -13,7 +13,7 @@ from copy import deepcopy
 import sys
 args = sys.args
 info = sys.info
-from model.resnet import Attribute_Network
+from model.utils.resnet import Attribute_Network
 
 class Classification(nn.Module):
     def __init__(self):

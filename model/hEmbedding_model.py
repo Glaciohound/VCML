@@ -16,7 +16,7 @@ args = sys.args
 info = sys.info
 import matplotlib.pyplot as plt
 import numpy as np
-from model.resnet import Attribute_Network
+from model.utils.resnet import Attribute_Network
 from utils.common import to_numpy, to_normalized, min_fn,\
     matmul, to_tensor, vistb, arange, logit_exist, log_or, logit_xand
 
