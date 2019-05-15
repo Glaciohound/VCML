@@ -33,9 +33,9 @@ class Dataset(torch.utils.data.Dataset):
             sceneGraph_port.register_vocabulary(cls.main_sceneGraphs)
 
         self.sceneGraphs = deepcopy(cls.main_sceneGraphs)
-        if args.visual_bias and args.train_config and config == 'full':
+        if args.visual_bias and config == 'full':
             self.filter_fn =\
-                sceneGraph_port.customize_filterFn(args.train_config,
+                sceneGraph_port.customize_filterFn(args.visual_bias,
                                                    val_reverse=True,
                                                    )
             sceneGraph_port.filter_sceneGraphs(

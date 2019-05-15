@@ -86,11 +86,14 @@ class Config:
 
         parser.add_argument('--no_aid', action='store_true',
                             help='setting B in de-biasing experiments')
-        parser.add_argument('--visual_bias', nargs='+',
-                            help='adding visual bias', required=False,
-                            'in the form of `Attr_0:[Attr_1,Attr2 ...] ...`')
+        parser.add_argument('--visual_bias', nargs='+', required=False,
+                            help='adding visual bias in the form of'
+                            '`Attr_0:[Attr_1,Attr2 ...] ...`')
         parser.add_argument('--synonym', nargs='+',
                             help='concepts to add synonyms')
+        parser.add_argument('--removed_concepts', nargs='+',
+                            help='concepts to deal with in partial or'
+                            'replaced training stage')
         parser.add_argument('--classification', nargs='+', required=False,
                             choices=['color', 'shape', 'material', 'size'],
                             help='what dimensions to consider when doing classification')
@@ -145,7 +148,7 @@ class Config:
 
         parser.add_argument('--num_attributes', type=int, default=3000)
         parser.add_argument('--max_concepts', type=int, default=50)
-        parser.add_argument('--embed_dim', type=int, default=60)
+        parser.add_argument('--embed_dim', type=int, default=100)
         parser.add_argument('--hidden_dim', type=int, default=0)
         parser.add_argument('--feature_dim', type=int, default=512)
 
@@ -218,7 +221,7 @@ class Config:
                     main, attrs = item.split(':')
                     attrs = attrs.split(',')
                     config[main] = attrs
-                self.visual_bias = Config
+                self.visual_bias = config
 
     def print(self):
         pprint.pprint('Arguments: ------------------------')

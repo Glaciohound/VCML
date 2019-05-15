@@ -7,6 +7,7 @@ import pickle
 from glob import glob
 from functools import reduce
 from utils.common import union, pick_one, get_imageId
+from collections import Counter
 
 
 def load_sceneGraphs(filename):
@@ -97,6 +98,9 @@ def default_scene(filename):
 
 def filter_sceneGraphs(sceneGraphs, filter_fn, inplace=False):
 
+    infeasible_split = [s['split'] for s in sceneGraphs.values()
+                        if not filter_fn(s)]
+    print('filtered scene graphs: ', Counter(infeasible_split))
     if not inplace:
         return {k: s for k, s in sceneGraphs.items()
                 if filter_fn(s)}

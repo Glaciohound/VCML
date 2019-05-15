@@ -19,6 +19,7 @@ import numpy as np
 from model.utils.resnet import Attribute_Network
 from utils.common import to_numpy, to_normalized, min_fn,\
     matmul, to_tensor, vistb, arange, logit_exist, log_or, logit_xand
+import pprint
 
 class HEmbedding(nn.Module):
     def __init__(self):
@@ -537,7 +538,8 @@ class HEmbedding(nn.Module):
                     init.normal_(param, 0, args.init_variance)
                 else:
                     init.normal(param, 0, args.init_variance)
-        print('initalized parameters:', inited)
+
+        pprint.pprint({'initalized parameters:': inited})
         self.new_optimizer()
 
     def new_optimizer(self):

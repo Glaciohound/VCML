@@ -82,18 +82,18 @@ class ToyDataset:
         all_concepts = {k: [k] for k in info.vocabulary['total']}
 
         if config == 'partial':
-            for attr in args.train_config:
+            for attr in args.removed_concepts:
                 if attr in all_concepts:
                     all_concepts.pop(attr)
         elif config == 'replaced':
-            for attr in args.train_config:
+            for attr in args.removed_concepts:
                 if attr in all_concepts:
                     all_concepts[attr] = [attr+'_syn']
 
         if 'synonym' in args.subtasks:
             _all_concepts = {}
             for attr in all_concepts.keys():
-                if attr in args.train_config:
+                if attr in args.synonym:
                     syns = synonym_dict[args.group][attr]
                 else:
                     syns = [attr]

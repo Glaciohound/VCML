@@ -11,47 +11,66 @@ convension of `CUDA_VISIBLE_DEVICES`
 
 ## notes
 
-This code requires a `data` symbolic link sibling the root directory of this
+This code requires a `data` symbolic link beside the root directory of this
 codebase
 
 ## commonly used scripts:
-
-### classification:
-
-```
-jac-run train.py --task {clevr_pt, clevr_dt} --subtask classification
---classification [color, shape, ...] --name classification --max_sizeDataset 20000
---silent
-```
-
-### exist, filter, query:
+Here,
 `{*, *, ...}` stands for any one inside the brace
 `[*, *, ...]` stands for one or more inside the brackets, (without the brackets
         themselves)
 
+### classification:
+
 ```
-jac-run train.py --task {clevr_pt, clevr_dt, toy} --subtasks {exist,
-    filter, query} --name any_name --silent
+jac-run train.py --task clevr_pt
+    --subtask classification
+    --classification color shape
+    --name classification --max_sizeDataset 20000
+--silent
+```
+
+### exist, filter, query:
+```
+jac-run train.py --task clevr_pt
+    --subtasks filter exist
+    --name any_name --silent
 ```
 
 ### isinstance
 ```
-jac-run train.py --task {clevr_pt, clevr_dt} --subtasks {exist, filter, query,
-    classification} isinstance --visualize_relation isinstance
+jac-run train.py --task clevr_pt
+    --subtasks exist isinstance
+    --visualize_relation isinstance
+    --val_concepts red blue cube
     --name any_name --silent
 ```
 
 ### isinstance for de-biasing
+setting A (with assistance of 'isinstance' questions)
 ```
-jac-run train.py --task {clevr_pt, clevr_dt} --subtasks {exist, filter, query,
-    classification} isinstance --visual_bias red:large large:red,blue
-    --generalization_ratio 0 --visualize_relation isinstance --name any_name --silent
+jac-run train.py --task clevr_pt
+    --subtasks classification isinstance
+    --visual_bias red:large large:red,blue
+    --generalization_ratio 0
+    --visualize_relation isinstance --name any_name --silent
+```
+setting B (without assistance of 'isinstance' questions) by adding `--no_aid`
+option
+```
+jac-run train.py --task clevr_pt
+    --subtasks classification isinstance
+    --visual_bias red:large large:red,blue
+    --no_aid
+    --visualize_relation isinstance --name any_name --silent
 ```
 
 ### synonym
 ```
-jac-run train.py --task {clevr_pt, clevr_dt} --subtasks {exist, filter, query,
-    classification} synonym --synonym blue red --name any_name --silent
+jac-run train.py --task clevr_pt
+    --subtasks exist synonym
+    --synonym blue red
+    --name any_name --silent
 ```
 
 ### common options
@@ -61,7 +80,10 @@ jac-run train.py --task {clevr_pt, clevr_dt} --subtasks {exist, filter, query,
     (i.e. jointly training attribute network),
     and `toy` stands for using a toy dataset with ground-truth attributes for objects
 
-`--random_seed 0` for setting manual random seeds, otherwise no manual random
+`--subtasks` for selecting (one or more) subtasks, from visual subtasks such as 
+`filter`, `exist`, `query`, and conceptual subtasks such as `isinstance`, `synonym`.
+
+`--random_seed 0` for setting manual random seed to `0`, otherwise no manual random
 seed is set.
 
 `--init_variance 0.001` for specifying initial variance of parameters, with defualt value 0.001.
