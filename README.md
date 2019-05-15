@@ -11,8 +11,8 @@ convension of `CUDA_VISIBLE_DEVICES`
 
 ## notes
 
-This code requires a `data` symbolic link beside the root directory of this
-codebase
+This code requires a `data` symbolic link in the same directory of the root
+of this codebase
 
 ## commonly used scripts:
 
@@ -108,6 +108,7 @@ test all concepts
 
 ### deprecated options
 
-`--model` arguments other than `h_embedding_add2` are deprecated
-some options in `config.py` are deprecated and list at the end of
-`parse_args()` method()
+`--model` arguments other than `h_embedding_add2` are deprecated.
+
+some options in `config.py` are deprecated and listed at the end of
+`Config.parse_args()` method()
