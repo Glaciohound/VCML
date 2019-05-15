@@ -30,45 +30,46 @@ from utils.common import tqdm, contains, equal_ratio, equal_items, recall
 from utils.basic import init_seed, save_log
 import numpy as np
 
+def accuracy_by_type(outputs, data):
+    _output = {}
+    def binary_right(x, y):
+        return x*y + (1-x)*(1-y)
+    for i in range(len(outputs)):
+        _type = data['type'][i]
+        if not _type in _output:
+            _output[_type] = {'right': 0, 'total': 0}
+        if _type == 'classification':
+            _output[_type]['total'] += (outputs[i] * 0 + 1).sum()
+            _output[_type]['right'] += binary_right(
+                (outputs[i].cpu()>0).long(), data['object_classes'][i].long()).sum()
+        else:
+            _output[_type]['total'] += 1
+            _output[_type]['right'] += (outputs[i].argmax() == data['answer'][i]).long()
+    for v in _output.values():
+        v['accuracy'] = v['right'] / v['total']
+    return _output
+
 def run_batch(data):
-    output, target, history, penalty_loss, types = info.model(data)
-    output = info.to(output)
+    losses, outputs = info.model(data)
     conceptual = np.array(list(map(lambda x: contains(x, args.conceptual_subtasks),
-                                   types.tolist()))).astype(float)
+                                   data['type'].tolist()))).astype(float)
     weight = info.to(torch.Tensor(conceptual * args.conceptual_weight
                                   + 1 - conceptual))
 
-    if info.new_torch:
-        losses = info.loss_fn(output, target, reduction='none')
-        answers = output.argmax(1)
-    else:
-        losses = info.loss_fn(output, Variable(target), reduce=False)
+    if not info.new_torch:
         weight = Variable(weight)
-        answers = output.data.max(1)[1]
 
-    accuracy = equal_ratio(answers, target)
+    loss = (weight * losses).sum()
+    accuracy = accuracy_by_type(outputs, data)
 
-    loss = (weight * (losses + penalty_loss * args.penalty)).sum()
-    output = {'loss': loss, 'accuracy': accuracy,
-              }
+    total_accuracy = np.array([float(v['accuracy']) for v in accuracy.values()]).mean()
+    log = {'loss': loss, 'accuracy': total_accuracy}
 
-    if 'yes' in info.question_dataset.answers:
-        yes = equal_ratio(answers, info.protocol['concepts', 'yes'])
-        no = equal_ratio(answers, info.protocol['concepts', 'no'])
-        output.update({'yes': yes, 'no': no})
+    for k, v in accuracy.items():
+        if k != 'accuracy':
+            log[k+'_accuracy'] = v['accuracy']
 
-    yes_items = equal_items(answers, info.protocol['concepts', 'yes'])
-    no_items = equal_items(answers, info.protocol['concepts', 'no'])
-    right_items = equal_items(answers, target)
-    question_types = info.question_dataset.types
-    for t in question_types:
-        type_items = equal_items(types, t)
-        if type_items.sum() > 0:
-            for select_items, select_name in\
-                    ((yes_items, 'yes'), (no_items, 'no'), (right_items, 'right')):
-                output['{}_{}'.format(t, select_name)] = recall(select_items, type_items)
-
-    return output
+    return log
 
 
 def train_epoch():
@@ -152,7 +153,6 @@ def main():
     elif args.model in ['h_embedding_mul', 'h_embedding_add',
                         'h_embedding_add2']:
         info.model = HEmbedding()
-    info.loss_fn = F.nll_loss
 
     args.print()
     info.pbars = []

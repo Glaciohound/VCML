@@ -46,16 +46,6 @@ def register_vocabulary(sceneGraphs):
                     if isinstance(attr, str):
                         info.vocabulary[cat, attr]
 
-def register_classes(sceneGraphs):
-    for scene in sceneGraphs.values():
-        if 'objects' in scene:
-            object_classes = ['-'.join([obj[cat]
-                                        for cat in args.classification])
-                            for obj in scene['objects'].values()]
-            [info.protocol['classes', obj_class]
-             for obj_class in object_classes]
-
-
 def merge_sceneGraphs(x, y):
     sceneGraphs = {}
     for image_id in union(x.keys(), y.keys()):

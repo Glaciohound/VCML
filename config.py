@@ -97,8 +97,6 @@ class Config:
         parser.add_argument('--removed_concepts', nargs='+',
                             help='concepts to deal with in partial or'
                             'replaced training stage')
-        parser.add_argument('--classification', nargs='+', required=False,
-                            help='what dimensions to consider when doing classification')
         parser.add_argument('--questionsPimage', type=int, default=1)
         parser.add_argument('--incremental_training', nargs='+', required=False,
                             choices=['full', 'partial', 'replaced'],

@@ -87,13 +87,14 @@ class Dataset(torch.utils.data.Dataset):
             output = {}
             scene = self.sceneGraphs[index]
             output['object_lengths'] = len(scene['objects'])
-            if 'objects' in scene and args.classification:
-                obj_inds = sorted(list(scene['objects'].keys()))
-                object_classes = ['-'.join([scene['objects'][ind][cat]
-                                            for cat in args.classification])
-                                for ind in obj_inds]
-                object_classes = np.array([info.protocol['classes', obj_class]
-                                           for obj_class in object_classes])
+            if 'objects' in scene:
+                all_concepts = info.vocabulary.concepts
+                object_classes = np.zeros((len(scene['objects']), len(all_concepts)),
+                                          dtype=float)
+                for i, obj in enumerate(scene['objects'].values()):
+                    for attr in obj.values():
+                        if attr in all_concepts:
+                            object_classes[i, all_concepts.index(attr)] = 1
                 output['object_classes'] = object_classes
 
             if self.mode == 'sceneGraph':
@@ -193,8 +194,6 @@ class Dataset(torch.utils.data.Dataset):
         else:
             raise Exception('No such task supported: %s' % args.task)
 
-        if args.classification:
-            sceneGraph_port.register_classes(sceneGraphs)
         return sceneGraphs
 
     def split(self):

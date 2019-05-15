@@ -49,6 +49,9 @@ def to_tensor(x):
             return torch.LongTensor(x)
         else:
             return x
+    elif isinstance(x, int) or isinstance(x, float)\
+        or np.isscalar(x):
+        return torch.tensor(x)
     else:
         return x
 

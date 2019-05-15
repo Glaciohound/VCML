@@ -38,12 +38,10 @@ class HEmbedding(nn.Module):
         else:
             self.obj_embed_dim = args.embed_dim
 
-        self.attribute_embedding = self.build_embedding(args.max_concepts, self.obj_embed_dim,
+        self.attribute_embedding = self.build_embedding(args.max_concepts, args.feature_dim,
                                                         'attribute', 0)
         self.feature_mlp = self.build_mlp(args.feature_dim, self.obj_embed_dim,
                                              'feature', args.hidden_dim)
-        self.classification_mlp = self.build_mlp(args.feature_dim, args.max_concepts,
-                                             'classification', args.hidden_dim)
 
         self.concept_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
                                                       'concept', args.hidden_dim)
@@ -133,39 +131,32 @@ class HEmbedding(nn.Module):
         processed['relation_arguments'] = self.relation_embedding(info.to(data['program'])[:, :, 1])
         processed['all_concepts'] = info.to(self.concept_embedding(Variable(info.to(torch.arange(args.max_concepts)).long())))
         processed['program_length'] = program_length
-        if 'scene' in data:
-            processed['scene'] = [info.to(scene) for scene in data['scene']]
+        def load_list(k):
+            if k in data:
+                processed[k] = [info.to(to_tensor(v)) for v in data[k]]
+        load_list('scene')
+        load_list('object_classes')
+        load_list('answer')
         if info.visual_dataset.mode == 'detected':
             processed['feature'], processed['recognized'] = self.resnet_model(data)
 
-        attentions = [None for i in range(batch_size)]
-        history = [{'attention': []} for i in range(batch_size)]
-        penalty_loss = [None for i in range(batch_size)]
-        targets = [None for i in range(batch_size)]
-        types = [None for i in range(batch_size)]
+        losses = [None for i in range(batch_size)]
+        outputs = [None for i in range(batch_size)]
 
         for i in range(batch_size):
             self.run_piece(data, processed, i,
-                           attentions, history, penalty_loss,
-                           targets, types)
+                           losses, outputs)
 
-        attentions = torch.cat(attentions)
-        penalty_loss = torch.cat(penalty_loss)
+        losses = torch.stack(losses)
         program_length = data['program'].shape[1]
-        history = {k: [history[i][k]
-                       for i in range(batch_size)]
-                   for k in history[0].keys()}
 
-        output = F.log_softmax(attentions[:, :args.max_concepts], 1)
-        targets = torch.cat(targets)
-        types = np.concatenate(types)
-
-        return output, targets, history, penalty_loss, types
+        return losses, outputs
 
     ''' fun one piece of data '''
     def run_piece(self, data, processed, i,
-                  attentions, history, penalty_loss,
-                  targets, types):
+                  losses, outputs):
+
+        ''' object inputs and concept embeddings '''
 
         if info.visual_dataset.mode == 'encoded_sceneGraph':
             object_input = self.embed_without_bg(processed['scene'][i])
@@ -173,107 +164,89 @@ class HEmbedding(nn.Module):
             object_input = processed['scene'][i]
         elif info.visual_dataset.mode == 'detected':
             object_input = processed['recognized'][i][1]
+        objects = self.feature_mlp(object_input)
+        objects = to_normalized(objects)
+
+        all_concepts = processed['all_concepts']
+        if self.model == 'add2':
+            all_concepts = torch.cat([all_concepts[:, :self.obj_embed_dim],
+                                      to_normalized(all_concepts[:, self.obj_embed_dim:])], dim=1)
+
+        ''' pre-processing: calculating all obj-feasible-concept logits '''
+        concept_names = info.vocabulary.concepts
+        concept_index = [info.protocol['concepts', name] for name in concept_names]
+        operators = all_concepts[concept_index, :self.obj_embed_dim]
+        latters = all_concepts[concept_index, self.obj_embed_dim:]
+        projected = objects[:, None] + operators[None, :]
+
+        ''' logits[i, j, k] = <obj_i + operator_j, concept_k> '''
+        logits = self.logit_fn(projected[:, :, None], latters[None, None], dim=3)
+        ''' self_logits[i, j] = <obj_i, operator_j, concept_j> '''
+        self_logits = torch.diagonal(logits, dim1=1, dim2=2)
+        other_logits = min_fn(self_logits[:, None, :], logits)
+        other_logits[(self_logits[:, :, None] == logits)] = -self.huge_value
+        submax_logits, subargmax = other_logits.max(2)
+        '''
+        conditinal probability:
+            Pr(concept_i <- obj_j | ∃ concept_i'~concept_i, s.t. concept_i' <- obj_j)
+        '''
+        conditional_logit = logit_exist(self_logits, submax_logits)
+
+        self.log_logits(logits, self_logits, submax_logits)
+
 
 
         ''' if dealing with a classification task '''
-
         if data['type'][i] == 'classification':
 
-            classification = self.classification_mlp(object_input)
-            attentions[i] = classification
-            penalty_loss[i] = info.to(data['object_classes'][i].float() * 0)
-            targets[i] = info.to(data['object_classes'][i])
-            types[i] = data['type'][i, None].repeat(data['object_lengths'][i])
-
+            losses[i] = F.binary_cross_entropy_with_logits(
+                conditional_logit, processed['object_classes'][i])
+            outputs[i] = conditional_logit
             return
 
 
         ''' otherwise, dealing with QA tasks '''
+
 
         if info.visual_dataset.mode in ['encoded_sceneGraph', 'pretrained']:
             num_objects = data['scene'][i].shape[0]
         else:
             num_objects = data['object_lengths'][i]
 
-        ''' object features and concept embeddings '''
-        objects = self.feature_mlp(object_input)
-        objects = to_normalized(objects)
-        all_concepts = processed['all_concepts']
-        if self.model == 'add2':
-            all_concepts = torch.cat([all_concepts[:, :self.obj_embed_dim],
-                                      to_normalized(all_concepts[:, self.obj_embed_dim:])], dim=1)
-
         ''' initializing attentions '''
         init_attention = lambda n: Variable(info.to(torch.ones(n))) * self.huge_value
         attention = {'concepts': init_attention(args.max_concepts),
                      'objects': init_attention(num_objects)}
-
-        ''' pre-processing: calculating all obj-feasible-concept logits '''
-        concept_index = [i for i in range(args.max_concepts)
-                         if info.protocol['concepts', i] in args.task_concepts['all_concepts']]
-        operators = all_concepts[concept_index, :self.obj_embed_dim]
-        latters = all_concepts[concept_index, self.obj_embed_dim:]
-        projected = objects[:, None] + operators[None, :]
-
-        logits = self.logit_fn(projected[:, :, None], latters[None, None], dim=3)
-        true_logits = torch.diagonal(logits, dim1=1, dim2=2)
-
         def attention_copy(attention_):
             return {k: v * 1 for k, v in attention_.items()}
 
         ''' operation[Filter] '''
         def filter_op(attention_, concept_, arg_i):
-            output = {}
+            _output = {}
 
             ''' if h_embedding_add2 model: '''
             if self.model == 'add2':
-                output['concepts'] = min_fn(attention_['concepts'], self.logit_fn(
-                  all_concepts, concept_[None]))
-
                 index = concept_index.index(arg_i)
-                believed_logit = logits[:, index]
-                other_logits = min_fn(believed_logit, true_logits)
-                other_logits[:, index] = -self.huge_value
-                submax_logit, subargmax = other_logits.max(1)
 
-                feasible_logit = believed_logit[:, index]
-
-                '''
-                conditinal probability:
-                    Pr(concept_i <- obj_j | ∃ concept_i'~concept_i, s.t. concept_i' <- obj_j)
-                '''
-                conditioned_logit = logit_exist(feasible_logit, submax_logit)
-                output['objects'] = min_fn(attention_['objects'],
-                                           conditioned_logit)
+                _output['concepts'] = min_fn(attention_['concepts'], self.logit_fn(
+                  all_concepts, concept_[None]))
+                _output['objects'] = min_fn(attention_['objects'],
+                                            conditional_logit[:, index])
 
                 ''' unused as in default args.penalty == 0 '''
                 sanity_loss = info.to(torch.tensor(0.))\
-                    -log_or(feasible_logit, submax_logit).min()
-
-                ''' logging for visualization '''
-                if 'logit_scatter' not in info.log:
-                    self.init_logits()
-                info.log['logit_scatter']['feasible_logit'][arg_i] += feasible_logit.tolist()
-                info.log['logit_scatter']['submax_logit'][arg_i] += submax_logit.tolist()
-                info.log['logit_scatter']['believed_logit'][arg_i] += believed_logit[0].tolist()
-                info.log['logit_scatter']['ref'][arg_i] += true_logits[0].tolist()
-                get_index = lambda x: args.names.index(x)
-                for i in range(subargmax.shape[0]):
-                    if submax_logit[i] > feasible_logit[i]:
-                        info.log['submax_match']\
-                            [get_index(info.protocol['concepts', int(arg_i)]),
-                            get_index(info.protocol['concepts', concept_index[int(subargmax[i])]])] += 1
+                    -log_or(self_logits, submax_logits).min()
 
             else:
-                output['objects'] = self.logit_fn(objects, concept_[None])
-                output['concepts'] = self.logit_fn(all_concepts, concept_[None])
-            return output, sanity_loss
+                _output['objects'] = self.logit_fn(objects, concept_[None])
+                _output['concepts'] = self.logit_fn(all_concepts, concept_[None])
+            return _output, sanity_loss
 
         def assign(attention_, value):
             for k, v in attention_.items():
                 attention_[k] = v * 0 + value
 
-        penalty_loss_item = []
+        penalty_loss = info.to(torch.tensor(0.))
 
         '''
         running the program
@@ -296,12 +269,12 @@ class HEmbedding(nn.Module):
             elif op_s == 'filter':
                 attention, exist_loss = filter_op(attention, processed['concept_arguments'][i, j],
                                                   data['program'][i, j, 1])
-                penalty_loss_item.append(exist_loss)
+                penalty_loss = penalty_loss + exist_loss
 
             elif op_s == 'verify':
                 attention, exist_loss = filter_op(attention, processed['concept_arguments'][i, j],
                                                   data['program'][i, j, 1])
-                penalty_loss_item.append(exist_loss)
+                penalty_loss = penalty_loss + exist_loss
                 attention['concepts'][torch.arange(args.max_concepts).long() != arg] =\
                     -self.huge_value
 
@@ -337,23 +310,23 @@ class HEmbedding(nn.Module):
                     matrix = processed['relation_arguments'][i, j]
                     transferred = torch.matmul(gather, matrix)
                     to_compare = torch.matmul(to_compare, matrix)
-                    output = self.scale(self.similarity(to_compare, transferred[None])-
+                    _output = self.scale(self.similarity(to_compare, transferred[None])-
                                         self.similarity(all_concepts, transferred[None]))
 
                 elif self.model == 'add':
                     transferred = gather + processed['relation_arguments'][i, j]
-                    output = self.logit_fn(to_compare, transferred[None])
+                    _output = self.logit_fn(to_compare, transferred[None])
 
                 elif self.model == 'add2':
                     transferred = gather + processed['relation_arguments'][i, j][:dim]
                     to_compare = to_compare[:, -dim:]
-                    output = self.logit_fn(to_compare, transferred[None])
+                    _output = self.logit_fn(to_compare, transferred[None])
 
                 assign(attention, -self.huge_value)
                 if op_s.endswith('c'):
-                    attention['concepts'] = output
+                    attention['concepts'] = _output
                 else:
-                    attention['objects'] = output
+                    attention['objects'] = _output
 
 
             elif op_s in ['<NULL>', '<START>', '<END>', '<UNKNOWN>']:
@@ -362,15 +335,12 @@ class HEmbedding(nn.Module):
             else:
                 raise Exception('no such operation %s supported' % op_s)
 
-            history[i]['attention'].append(attention)
-
         ''' modyfying values'''
-        attention['concepts'][len(info.protocol['concepts']):] = 0
-        attentions[i] = attention['concepts'][None]
-        penalty_loss[i] = sum(penalty_loss_item)[None]\
-            if penalty_loss_item else info.to(torch.tensor(0.))[None]
-        targets[i] = info.to(to_tensor(data['answer'][i][None]))
-        types[i] = data['type'][i, None]
+        attention['concepts'][len(info.protocol['concepts']):] = - self.huge_value
+        log_softmax = F.log_softmax(attention['concepts'], dim=0)
+        losses[i] = F.nll_loss(log_softmax[None], processed['answer'][i][None]) +\
+            penalty_loss * args.penalty
+        outputs[i] = log_softmax
 
     '''
     (only used in ground-truth mode)
@@ -467,6 +437,21 @@ class HEmbedding(nn.Module):
         plt.close()
         return to_visualize, original, converted
 
+    def log_logits(self, logits, self_logits, submax_logits):
+        if 'logit_scatter' not in info.log:
+            self.init_logits()
+        def to_list(tensor):
+            return tensor.contiguous().view(-1).tolist()
+        subargmax = logits.argmax(2)
+        for i in range(logits.shape[1]):
+            info.log['logit_scatter']['self_logits'][i] += to_list(self_logits[:, i])
+            info.log['logit_scatter']['submax_logit'][i] += to_list(submax_logits[:, i])
+            info.log['logit_scatter']['believed_logit'][i] += to_list(logits[:, i])
+            info.log['logit_scatter']['ref'][i] += to_list(self_logits)
+
+            for j in range(logits.shape[0]):
+                info.log['match'][i, subargmax[j, i]] += 1
+
     def visualize_logit(self):
         if 'logit_scatter' not in info.log:
             return
@@ -478,11 +463,11 @@ class HEmbedding(nn.Module):
                     for series in info.log['logit_scatter'].values()
                     for logits in series if logits])
         for i in range(args.max_concepts):
-            if info.log['logit_scatter']['feasible_logit'][i]:
-                self.scatter(info.log['logit_scatter']['feasible_logit'][i],
+            if info.log['logit_scatter']['self_logits'][i]:
+                self.scatter(info.log['logit_scatter']['self_logits'][i],
                              info.log['logit_scatter']['submax_logit'][i],
                              (min_, max_),
-                             ('feasible_logit', 'submax_logit',
+                             ('self_logits', 'submax_logit',
                               info.protocol['concepts', i] + '_final'))
                 self.scatter(info.log['logit_scatter']['believed_logit'][i],
                              info.log['logit_scatter']['ref'][i],
@@ -490,17 +475,17 @@ class HEmbedding(nn.Module):
                              ('believed_logit', 'ref',
                               info.protocol['concepts', i] + '_believed'))
 
-        self.matshow(info.log['submax_match'], 'submax_match')
+        self.matshow(info.log['match'], 'match')
 
         self.init_logits()
 
     def init_logits(self):
-        info.log['logit_scatter'] = {'feasible_logit': [[] for i in range(args.max_concepts)],
+        info.log['logit_scatter'] = {'self_logits': [[] for i in range(args.max_concepts)],
                                     'submax_logit': [[] for i in range(args.max_concepts)],
                                     'believed_logit': [[] for i in range(args.max_concepts)],
                                     'ref': [[] for i in range(args.max_concepts)]}
         n_concepts = len(args.task_concepts['all_concepts'])
-        info.log['submax_match'] = np.zeros(shape=(n_concepts, n_concepts), dtype=int)
+        info.log['match'] = np.zeros(shape=(n_concepts, n_concepts), dtype=int)
 
     def savefig(self, name):
         image_dir = os.path.join(args.visualize_dir, 'images')

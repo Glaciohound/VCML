@@ -128,6 +128,9 @@ test all concepts
 `isinstance` metaconcept
 
 
+`--no_validation` no validation or generalization test
+
+
 ### deprecated options
 
 `--model` arguments other than `h_embedding_add2` are deprecated.
