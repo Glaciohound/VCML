@@ -17,9 +17,9 @@ class RelationModel(nn.Module):
 
     def build(self):
         args = self.args
-        self.attribute_embeddingIn = nn.Embedding(args.num_attributes, args.embed_dim)
-        self.attribute_embeddingOut = nn.Embedding(args.num_attributes, args.embed_dim)
-        self.attribute_embeddingId = nn.Embedding(args.num_attributes, args.identity_dim)
+        self.attribute_embeddingIn = nn.Embedding(args.max_concepts, args.embed_dim)
+        self.attribute_embeddingOut = nn.Embedding(args.max_concepts, args.embed_dim)
+        self.attribute_embeddingId = nn.Embedding(args.max_concepts, args.identity_dim)
         self.feature_linearIn = nn.Linear(args.feature_dim, args.embed_dim)
         self.feature_linearOut = nn.Linear(args.feature_dim, args.embed_dim)
         self.feature_linearId = nn.Linear(args.feature_dim, args.identity_dim)

@@ -99,7 +99,7 @@ class Protocol:
 
     def belongs_to(self, name):
         cats = [cat for cat, content in self.records.items()
-                if name in content]
+                if name in content and cat != 'classes']
         if len(cats) > 1:
             raise Exception('%s belongs to multiple categories')
         else:

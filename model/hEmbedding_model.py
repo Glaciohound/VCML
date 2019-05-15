@@ -38,17 +38,15 @@ class HEmbedding(nn.Module):
         else:
             self.obj_embed_dim = args.embed_dim
 
-        self.attribute_embedding = self.build_embedding(args.num_attributes, self.obj_embed_dim,
+        self.attribute_embedding = self.build_embedding(args.max_concepts, self.obj_embed_dim,
                                                         'attribute', 0)
         self.feature_mlp = self.build_mlp(args.feature_dim, self.obj_embed_dim,
                                              'feature', args.hidden_dim)
-
-        self.classification_mlp = self.build_mlp(args.feature_dim, self.obj_embed_dim,
+        self.classification_mlp = self.build_mlp(args.feature_dim, args.max_concepts,
                                              'classification', args.hidden_dim)
 
         self.concept_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
                                                       'concept', args.hidden_dim)
-
         self.relation_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
                                                     'relation', 0, matrix=self.model=='mul')
 
@@ -169,17 +167,26 @@ class HEmbedding(nn.Module):
                   attentions, history, penalty_loss,
                   targets, types):
 
+        if info.visual_dataset.mode == 'encoded_sceneGraph':
+            object_input = self.embed_without_bg(processed['scene'][i])
+        elif info.visual_dataset.mode == 'pretrained':
+            object_input = processed['scene'][i]
+        elif info.visual_dataset.mode == 'detected':
+            object_input = processed['recognized'][i][1]
+
+
         ''' if dealing with a classification task '''
 
         if data['type'][i] == 'classification':
-            if info.visual_dataset.mode == 'pretrained':
-                attentions[i] = self.classification_mlp(processed['scene'][i])
-            elif info.visual_dataset.mode == 'detected':
-                attentions[i] = self.classification_mlp(processed['recognized'][i][1])
+
+            classification = self.classification_mlp(object_input)
+            attentions[i] = classification
             penalty_loss[i] = info.to(data['object_classes'][i].float() * 0)
             targets[i] = info.to(data['object_classes'][i])
             types[i] = data['type'][i, None].repeat(data['object_lengths'][i])
+
             return
+
 
         ''' otherwise, dealing with QA tasks '''
 
@@ -188,16 +195,9 @@ class HEmbedding(nn.Module):
         else:
             num_objects = data['object_lengths'][i]
 
-        ''' object features '''
-        if info.visual_dataset.mode == 'encoded_sceneGraph':
-            objects = self.embed_without_bg(processed['scene'][i])
-        elif info.visual_dataset.mode == 'pretrained':
-            objects = self.feature_mlp(processed['scene'][i])
-        elif info.visual_dataset.mode == 'detected':
-            objects = self.feature_mlp(processed['recognized'][i][1])
+        ''' object features and concept embeddings '''
+        objects = self.feature_mlp(object_input)
         objects = to_normalized(objects)
-
-        ''' concept embeddings '''
         all_concepts = processed['all_concepts']
         if self.model == 'add2':
             all_concepts = torch.cat([all_concepts[:, :self.obj_embed_dim],
@@ -365,7 +365,8 @@ class HEmbedding(nn.Module):
             history[i]['attention'].append(attention)
 
         ''' modyfying values'''
-        attentions[i] = attention['concepts'][:len(info.protocol['concepts'])][None]
+        attention['concepts'][len(info.protocol['concepts']):] = 0
+        attentions[i] = attention['concepts'][None]
         penalty_loss[i] = sum(penalty_loss_item)[None]\
             if penalty_loss_item else info.to(torch.tensor(0.))[None]
         targets[i] = info.to(to_tensor(data['answer'][i][None]))

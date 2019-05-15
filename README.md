@@ -11,8 +11,12 @@ convension of `CUDA_VISIBLE_DEVICES`
 
 ## notes
 
-This code requires a `data` symbolic link in the same directory of the root
-of this codebase
+Please set `--clevr_data_dir` to a directory containing CLEVR dataset, e.g.
+`--clevr_data_dir /data/vision/billf/scratch/chihan/clevr` which is the
+defualt value for this option
+
+Please specify your own `--visualize_dir`, `--log_dir`, `--ckpt_dir` to avoid
+permission issues, or set `--silent` to turn off file output
 
 ## commonly used scripts:
 
@@ -76,20 +80,31 @@ jac-run train.py --task clevr_pt
     (i.e. jointly training attribute network),
     and `toy` stands for using a toy dataset with ground-truth attributes for objects
 
+When in `--task clevr_dt` setting, please specify `--feature_dim 256`.
+When in `--task toy` setting, please specify `--feature_dim 50` or
+`--embed_dim 512`
+
+
 `--subtasks` for selecting (one or more) subtasks, from visual subtasks such as 
 `filter`, `exist`, `query`, and conceptual subtasks such as `isinstance`, `synonym`.
+
 
 `--random_seed 0` for setting manual random seed to `0`, otherwise no manual random
 seed is set.
 
+
 `--init_variance 0.001` for specifying initial variance of parameters, with defualt value 0.001.
+
 
 `--lr 0.001` for setting learning rate
 
+
 `--silent` for turning off visualization, checkpoint saving and result logging
+
 
 `--name trial` is a name for this experiment used for visualization, logging,
     saving checkpoints, etc
+
 
 `--visual_bias red:large large:red,blue` for specifying visual-bias configurations,
     e.g. `--visual_bias red:sphere,large blue:small` will be tidied into
@@ -97,14 +112,21 @@ seed is set.
     which may enforce all 'red' objects to be 'large', while all 'large'
     objects to be 'red' or 'blue'
 
+
 `--synonym red blue` for adding synonyms. In this case, synonyms of 'red' and
 'blue' will be added into the VQA corpus
+
 
 `--incremental_training partial full` for specifying trianing scheme, which in This
 case will first train with a `partial` dataset, where concepts specified by
 `--removed_concepts` will not be trained or tested, and then, when accuracy achieves
 threshold specified by `--perfect_th`, change to a `full` dataset to train and
 test all concepts
+
+
+`--visualize_relation isinstance` visualize information related to
+`isinstance` metaconcept
+
 
 ### deprecated options
 

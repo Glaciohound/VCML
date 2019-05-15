@@ -57,20 +57,16 @@ def run_batch(data):
         no = equal_ratio(answers, info.protocol['concepts', 'no'])
         output.update({'yes': yes, 'no': no})
 
-    if accuracy != 1:
-        info.log['flawed'] = data
-
-    if args.conceptual:
-        yes_items = equal_items(answers, info.protocol['concepts', 'yes'])
-        no_items = equal_items(answers, info.protocol['concepts', 'no'])
-        right_items = equal_items(answers, target)
-        types = info.question_dataset.types
-        for t in types:
-            type_items = equal_items(data['type'], t)
-            if type_items.sum() > 0:
-                for select_items, select_name in\
-                        ((yes_items, 'yes'), (no_items, 'no'), (right_items, 'right')):
-                    output['{}_{}'.format(t, select_name)] = recall(select_items, type_items)
+    yes_items = equal_items(answers, info.protocol['concepts', 'yes'])
+    no_items = equal_items(answers, info.protocol['concepts', 'no'])
+    right_items = equal_items(answers, target)
+    question_types = info.question_dataset.types
+    for t in question_types:
+        type_items = equal_items(types, t)
+        if type_items.sum() > 0:
+            for select_items, select_name in\
+                    ((yes_items, 'yes'), (no_items, 'no'), (right_items, 'right')):
+                output['{}_{}'.format(t, select_name)] = recall(select_items, type_items)
 
     return output
 

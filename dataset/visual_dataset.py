@@ -86,13 +86,13 @@ class Dataset(torch.utils.data.Dataset):
         elif args.group in ['clevr', 'toy']:
             output = {}
             scene = self.sceneGraphs[index]
-
-            if 'objects' in scene:
+            output['object_lengths'] = len(scene['objects'])
+            if 'objects' in scene and args.classification:
                 obj_inds = sorted(list(scene['objects'].keys()))
                 object_classes = ['-'.join([scene['objects'][ind][cat]
                                             for cat in args.classification])
                                 for ind in obj_inds]
-                object_classes = np.array([info.vocabulary['classes', obj_class]
+                object_classes = np.array([info.protocol['classes', obj_class]
                                            for obj_class in object_classes])
                 output['object_classes'] = object_classes
 
@@ -103,8 +103,7 @@ class Dataset(torch.utils.data.Dataset):
                 output.update({'scene': self.encode_sceneGraphs(scene)})
 
             elif self.mode == 'pretrained':
-                output.update({'scene': self.get_features(scene),
-                               'object_lengths': len(scene['objects'])})
+                output.update({'scene': self.get_features(scene)})
 
             elif self.mode == 'detected':
                 image = Image.open(scene['image_filename']).convert('RGB')
@@ -194,7 +193,8 @@ class Dataset(torch.utils.data.Dataset):
         else:
             raise Exception('No such task supported: %s' % args.task)
 
-        sceneGraph_port.register_classes(sceneGraphs)
+        if args.classification:
+            sceneGraph_port.register_classes(sceneGraphs)
         return sceneGraphs
 
     def split(self):

@@ -47,19 +47,13 @@ def register_vocabulary(sceneGraphs):
                         info.vocabulary[cat, attr]
 
 def register_classes(sceneGraphs):
-    if not args.classification:
-        args.classification = [pick_one(pick_one(pick_one(sceneGraphs.values(),
-                                                          lambda x: 'objects' in x)
-                                                 ['objects'].values(),),
-                                        lambda x: isinstance(x, str),
-                                        on_value=True)]
     for scene in sceneGraphs.values():
         if 'objects' in scene:
             object_classes = ['-'.join([obj[cat]
                                         for cat in args.classification])
                             for obj in scene['objects'].values()]
             [info.protocol['classes', obj_class]
-            for obj_class in object_classes]
+             for obj_class in object_classes]
 
 
 def merge_sceneGraphs(x, y):

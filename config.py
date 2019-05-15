@@ -49,7 +49,8 @@ class Config:
 
         ''' dir_add_argument() are for adding relative directories '''
         group = 'gqa'
-        parser.add_argument('--gqa_data_dir', default='../../data/gqa')
+        parser.add_argument('--gqa_data_dir',
+                            default='/data/vision/billf/scratch/chihan/gqa')
         dir_add_argument('--image_dir', default='raw/allImages/images')
         dir_add_argument('--sceneGraph_h5', default='processed/SG.h5')
         dir_add_argument('--sceneGraph_json', default='raw/sceneGraphs/all_sceneGraphs.json')
@@ -58,7 +59,8 @@ class Config:
         dir_add_argument('--questions_h5', default='processed/questions')
         dir_add_argument('--questions_json', default='raw/questions/all_balanced_questions.json')
         group = 'clevr'
-        parser.add_argument('--clevr_data_dir', default='../../data/clevr')
+        parser.add_argument('--clevr_data_dir',
+                            default='/data/vision/billf/scratch/chihan/clevr')
         dir_add_argument('--image_dir', default='raw/CLEVR_v1.0/images')
         #dir_add_argument('--sceneGraph_dir', default='raw/CLEVR_v1.0/scenes')
         dir_add_argument('--sceneGraph_dir', default='detections')
@@ -66,7 +68,8 @@ class Config:
         dir_add_argument('--protocol_file', default='processed/clevr_protocol.json')
         dir_add_argument('--vocabulary_file', default='processed/clevr_vocabulary.json')
         group = 'toy'
-        parser.add_argument('--toy_data_dir', default='../../data/gqa')
+        parser.add_argument('--toy_data_dir',
+                            default='/data/vision/billf/scratch/chihan/gqa')
         dir_add_argument('--protocol_file', default='processed/toy_protocol.json')
         dir_add_argument('--vocabulary_file', default='processed/toy_vocabulary.json')
 
@@ -95,7 +98,6 @@ class Config:
                             help='concepts to deal with in partial or'
                             'replaced training stage')
         parser.add_argument('--classification', nargs='+', required=False,
-                            choices=['color', 'shape', 'material', 'size'],
                             help='what dimensions to consider when doing classification')
         parser.add_argument('--questionsPimage', type=int, default=1)
         parser.add_argument('--incremental_training', nargs='+', required=False,
@@ -146,7 +148,6 @@ class Config:
         parser.add_argument('--ckpt', type=str)
         parser.add_argument('--name', type=str, default='trial')
 
-        parser.add_argument('--num_attributes', type=int, default=3000)
         parser.add_argument('--max_concepts', type=int, default=50)
         parser.add_argument('--embed_dim', type=int, default=100)
         parser.add_argument('--hidden_dim', type=int, default=0)
@@ -201,9 +202,6 @@ class Config:
                                           dicts[arg])
                 if group == self.group:
                     dicts[arg.replace(group+'_', '')] = dicts[arg]
-
-        if self.task.endswith('dt'):
-            self.feature_dim = 256
 
         self.conceptual = False
         for k in self.conceptual_subtasks:
