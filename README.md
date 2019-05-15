@@ -15,10 +15,6 @@ This code requires a `data` symbolic link beside the root directory of this
 codebase
 
 ## commonly used scripts:
-Here,
-`{*, *, ...}` stands for any one inside the brace
-`[*, *, ...]` stands for one or more inside the brackets, (without the brackets
-        themselves)
 
 ### classification:
 
@@ -27,7 +23,7 @@ jac-run train.py --task clevr_pt
     --subtask classification
     --classification color shape
     --name classification --max_sizeDataset 20000
---silent
+    --silent
 ```
 
 ### exist, filter, query:
@@ -103,6 +99,12 @@ seed is set.
 
 `--synonym red blue` for adding synonyms. In this case, synonyms of 'red' and
 'blue' will be added into the VQA corpus
+
+`--incremental_training partial full` for specifying trianing scheme, which in This
+case will first train with a `partial` dataset, where concepts specified by
+`--removed_concepts` will not be trained or tested, and then, when accuracy achieves
+threshold specified by `--perfect_th`, change to a `full` dataset to train and
+test all concepts
 
 ### deprecated options
 
