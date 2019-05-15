@@ -51,7 +51,14 @@ class Dataset(torch.utils.data.Dataset):
         }
         cls.collate_fn = collate_utils.get_collateFn(cls.collate_setting)
 
-    def __getitem__(self, index_):
+    def __getitem__(self, index):
+        try:
+            return self.__getitem_inner__(index)
+        except Exception as exc:
+            print(exc)
+            raise exc
+
+    def __getitem_inner__(self, index_):
         if isinstance(index_, str):
             index_ = self.index.index(index_)
         index = self.index[index_]

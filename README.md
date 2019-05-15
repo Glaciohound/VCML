@@ -25,7 +25,6 @@ permission issues, or set `--silent` to turn off file output
 ```
 jac-run train.py --task clevr_pt
     --subtask classification
-    --classification color shape
     --name classification --max_sizeDataset 20000
     --silent
 ```
@@ -129,6 +128,10 @@ test all concepts
 
 
 `--no_validation` no validation or generalization test
+
+
+`--val_by_classification red blue` when in validation, test classification
+performance on `red` and `blue` rather vqa performance
 
 
 ### deprecated options

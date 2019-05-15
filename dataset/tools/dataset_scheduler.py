@@ -74,3 +74,7 @@ class DatasetScheduler:
                 dataset_.to_mode(mode)
         else:
             this_dataset['visual_dataset'].to_mode(mode)
+
+    @property
+    def config(self):
+        return args.incremental_training[self.dataset_count]

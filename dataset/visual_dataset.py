@@ -47,6 +47,13 @@ class Dataset(torch.utils.data.Dataset):
 
 
     def __getitem__(self, index):
+        try:
+            return self.__getitem_inner__(index)
+        except Exception as exc:
+            print(exc)
+            raise exc
+
+    def __getitem_inner__(self, index):
         if not isinstance(index, str):
             index = self.index[index]
 
@@ -93,7 +100,7 @@ class Dataset(torch.utils.data.Dataset):
                                           dtype=float)
                 for i, obj in enumerate(scene['objects'].values()):
                     for attr in obj.values():
-                        if attr in all_concepts:
+                        if isinstance(attr, str) and attr in all_concepts:
                             object_classes[i, all_concepts.index(attr)] = 1
                 output['object_classes'] = object_classes
 

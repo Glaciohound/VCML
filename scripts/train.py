@@ -37,16 +37,16 @@ def accuracy_by_type(outputs, data):
     for i in range(len(outputs)):
         _type = data['type'][i]
         if not _type in _output:
-            _output[_type] = {'right': 0, 'total': 0}
+            _output[_type] = []
         if _type == 'classification':
-            _output[_type]['total'] += (outputs[i] * 0 + 1).sum()
-            _output[_type]['right'] += binary_right(
-                (outputs[i].cpu()>0).long(), data['object_classes'][i].long()).sum()
+            right = binary_right((outputs[i].cpu()>0).long(),
+                                 data['object_classes'][i].long()).sum()
+            total = (outputs[i] * 0 + 1).sum()
+            _output[_type].append(right / total)
         else:
-            _output[_type]['total'] += 1
-            _output[_type]['right'] += (outputs[i].argmax() == data['answer'][i]).long()
-    for v in _output.values():
-        v['accuracy'] = v['right'] / v['total']
+            _output[_type].append((outputs[i].argmax() ==
+                                   data['answer'][i]).long())
+
     return _output
 
 def run_batch(data):
@@ -62,12 +62,14 @@ def run_batch(data):
     loss = (weight * losses).sum()
     accuracy = accuracy_by_type(outputs, data)
 
-    total_accuracy = np.array([float(v['accuracy']) for v in accuracy.values()]).mean()
+    total_accuracy = []
+    for v in accuracy.values():
+        total_accuracy += v
+    total_accuracy = torch.stack(total_accuracy).mean()
     log = {'loss': loss, 'accuracy': total_accuracy}
 
     for k, v in accuracy.items():
-        if k != 'accuracy':
-            log[k+'_accuracy'] = v['accuracy']
+        log[k+'_accuracy'] = torch.stack(v).mean()
 
     return log
 

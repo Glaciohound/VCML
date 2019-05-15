@@ -34,6 +34,7 @@ synonym_dict = {
         'small': ['small', 'tiny'],
         'metal': ['metallic', 'metal', 'shiny'],
         'rubber': ['rubber', 'matte'],
+
         'left': ['left of', 'to the left of', 'on the left side of'],
         'right': ['right of', 'to the right of', 'on the right side of'],
         'behind': ['behind'],
@@ -89,7 +90,6 @@ class ToyDataset:
             for attr in args.removed_concepts:
                 if attr in all_concepts:
                     all_concepts[attr] = [attr+'_syn']
-
         if 'synonym' in args.subtasks:
             _all_concepts = {}
             for attr in all_concepts.keys():
@@ -102,26 +102,17 @@ class ToyDataset:
                     _all_concepts[s] = syns
             all_concepts = _all_concepts
 
-        args.task_concepts['all_concepts'] = set(list(all_concepts.keys())+
-                                                 [at for attrs in all_concepts.values()
-                                                  for at in attrs])
-
-        if args.conceptual:
-            task_concepts = {}
-            if args.val_concepts:
-                assert set(args.val_concepts).issubset(set(all_concepts)), 'outside concept set'
-                task_concepts['val'] = args.val_concepts
-            else:
-                task_concepts['val'] = np.random.choice(list(all_concepts),
-                                                        int(len(all_concepts)*args.generalization_ratio),
-                                                        replace=False)
-            task_concepts['train'] = np.setdiff1d(list(all_concepts), task_concepts['val'])
-            task_concepts['total'] = all_concepts
-            args.task_concepts[config] = task_concepts
+        task_concepts = {}
+        if args.val_concepts:
+            assert set(args.val_concepts).issubset(set(all_concepts)), 'outside concept set'
+            task_concepts['val'] = args.val_concepts
         else:
-            task_concepts = {'train': list(all_concepts), 'val': list(all_concepts),
-                             'total': all_concepts}
-            args.task_concepts[config] = task_concepts
+            task_concepts['val'] = np.random.choice(list(all_concepts),
+                                                    int(len(all_concepts)*args.generalization_ratio),
+                                                    replace=False)
+        task_concepts['train'] = np.setdiff1d(list(all_concepts), task_concepts['val'])
+        task_concepts['total'] = all_concepts
+        args.task_concepts[config] = task_concepts
 
         selected_ids = np.random.choice(list(visual_dataset.keys()), args.max_sizeDataset)
         print('building question dataset')
@@ -139,11 +130,12 @@ class ToyDataset:
                     set(args.conceptual_subtasks)))
                 visual_subtasks = list(set(args.subtasks).difference(
                     set(conceptual_subtasks)))
-                if not args.conceptual or \
+                if not args.conceptual or args.no_aid or \
                         np.random.random() > args.conceptual_question_ratio:
                     _visual_subtask = np.random.choice(visual_subtasks)
-                    if _visual_subtask == 'classification':
-                        question = cls.empty_question(scene, 'classification')
+                    if _visual_subtask == 'classification'\
+                            or (split != 'train' and args.val_by_classification):
+                        question = cls.classification_task(scene, config)
                     elif _visual_subtask == 'exist':
                         question = cls.exist_question(scene, config)
                     elif _visual_subtask == 'filter':
@@ -168,17 +160,24 @@ class ToyDataset:
         return questions
 
     @classmethod
-    def empty_question(cls, scene, fake_name):
+    def classification_task(cls, scene, config):
         # filter-exist questions
 
+        if scene['split'] != 'train' and args.val_by_classification:
+            concepts_to_classify = args.val_by_classification
+        else:
+            concepts_to_classify = info.vocabulary.concepts
         question = {
-            'question': 'Please classifiy objects in the image.',
+            'question': 'Please classifiy objects in the image on concepts of {}.'
+            .format(', '.join(concepts_to_classify)),
             'semantic': [
-                {'operation': '<NULL>', 'argument': '<NULL>',
-                'dependencies': []},
+                {'operation': 'classification',
+                 'argument': name,
+                 'dependencies': []}
+                for name in concepts_to_classify
             ],
             'answer': 'None',
-            'type': fake_name,
+            'type': 'classification',
         }
 
         return question

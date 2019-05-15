@@ -105,6 +105,8 @@ class Config:
                                 'replaced for using a synonym as a substitute in tasks')
         parser.add_argument('--val_concepts', nargs='+', required=False,
                             help='concepts for validation')
+        parser.add_argument('--val_by_classification', nargs='+', type=str,
+                            help='val these concepts not by vqa but classification performance')
 
         parser.add_argument('--max_sizeDataset', type=int, default=5000)
         parser.add_argument('--box_scale', type=int, default=1024,

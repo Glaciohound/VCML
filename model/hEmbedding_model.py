@@ -195,18 +195,20 @@ class HEmbedding(nn.Module):
         self.log_logits(logits, self_logits, submax_logits)
 
 
-
         ''' if dealing with a classification task '''
         if data['type'][i] == 'classification':
+            to_classify = data['program'][i, :, 1].tolist()
+            to_classify = [concept_index.index(_index) for _index in to_classify]
 
-            losses[i] = F.binary_cross_entropy_with_logits(
-                conditional_logit, processed['object_classes'][i])
-            outputs[i] = conditional_logit
+            binary_loss = F.binary_cross_entropy_with_logits(
+                conditional_logit, processed['object_classes'][i], reduction='none')
+            losses[i] = binary_loss[:, to_classify].mean()
+            outputs[i] = conditional_logit[:, to_classify]
+            data['object_classes'][i] = data['object_classes'][i][:, to_classify]
             return
 
 
         ''' otherwise, dealing with QA tasks '''
-
 
         if info.visual_dataset.mode in ['encoded_sceneGraph', 'pretrained']:
             num_objects = data['scene'][i].shape[0]
@@ -443,6 +445,7 @@ class HEmbedding(nn.Module):
         def to_list(tensor):
             return tensor.contiguous().view(-1).tolist()
         subargmax = logits.argmax(2)
+
         for i in range(logits.shape[1]):
             info.log['logit_scatter']['self_logits'][i] += to_list(self_logits[:, i])
             info.log['logit_scatter']['submax_logit'][i] += to_list(submax_logits[:, i])
@@ -484,7 +487,7 @@ class HEmbedding(nn.Module):
                                     'submax_logit': [[] for i in range(args.max_concepts)],
                                     'believed_logit': [[] for i in range(args.max_concepts)],
                                     'ref': [[] for i in range(args.max_concepts)]}
-        n_concepts = len(args.task_concepts['all_concepts'])
+        n_concepts = len(info.vocabulary.concepts)
         info.log['match'] = np.zeros(shape=(n_concepts, n_concepts), dtype=int)
 
     def savefig(self, name):
@@ -502,7 +505,7 @@ class HEmbedding(nn.Module):
         plt.clf()
 
     def scatter(self, x, y, lim, names):
-        plt.scatter(x, y, s=1)
+        plt.scatter(x, y, s=0.1)
         plt.xlabel(names[0])
         plt.ylabel(names[1])
         plt.xlim(lim)
