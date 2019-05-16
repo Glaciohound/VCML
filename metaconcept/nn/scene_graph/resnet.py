@@ -15,12 +15,12 @@ from .scene_graph import SceneGraph
 from metaconcept import info
 
 class ResNetSceneGraph(nn.Module):
-    def __init__(self):
+    def __init__(self, relation=True):
         super().__init__()
 
         self.resnet = resnet.resnet34(pretrained=True, incl_gap=False, num_classes=None)
         self.resnet.layer4 = jacnn.Identity()
-        self.scene_graph = SceneGraph(256, [None, 256, 256], 16)
+        self.scene_graph = SceneGraph(256, [None, 256, 256], 16, relation=relation)
 
     def forward(self, batch):
         features = self.resnet(info.to(batch['image']))
