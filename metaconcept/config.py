@@ -61,8 +61,8 @@ class Config(object):
         group = 'gqa'
         parser.add_argument('--gqa_data_dir', default='/data/vision/billf/scratch/chihan/gqa')
         dir_add_argument('--image_dir', default='raw/allImages/images')
-        dir_add_argument('--sceneGraph_h5', default='processed/SG.h5')
-        dir_add_argument('--sceneGraph_json', default='raw/sceneGraphs/all_sceneGraphs.json')
+        #dir_add_argument('--sceneGraph_h5', default='processed/SG.h5')
+        dir_add_argument('--sceneGraph_dir', default='raw/sceneGraphs')
         dir_add_argument('--vocabulary_file', default='processed/gqa_vocabulary.json')
         dir_add_argument('--protocol_file', default='processed/gqa_protocol.json')
         dir_add_argument('--questions_h5', default='processed/questions')
@@ -71,7 +71,6 @@ class Config(object):
         group = 'clevr'
         parser.add_argument('--clevr_data_dir', default='/data/vision/billf/scratch/chihan/clevr')
         dir_add_argument('--image_dir', default='raw/CLEVR_v1.0/images')
-        # dir_add_argument('--sceneGraph_dir', default='raw/CLEVR_v1.0/scenes')
         dir_add_argument('--sceneGraph_dir', default='detections')
         dir_add_argument('--feature_sceneGraph_dir', default='attr_net/results')
         dir_add_argument('--protocol_file', default='processed/clevr_protocol.json')

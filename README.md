@@ -23,7 +23,7 @@ permission issues, or set `--silent` to turn off file output
 ### classification:
 
 ```
-jac-run train.py --task clevr_pt
+jac-run scripts/train.py --task clevr_pt
     --subtask classification
     --name classification --max_sizeDataset 20000
     --silent
@@ -31,7 +31,7 @@ jac-run train.py --task clevr_pt
 
 ### exist, filter, query:
 ```
-jac-run train.py --task clevr_pt
+jac-run scripts/train.py --task clevr_pt
     --subtasks filter exist
     --name any_name --silent
 ```
@@ -39,7 +39,7 @@ jac-run train.py --task clevr_pt
 ### isinstance
 pretrained feature version
 ```
-jac-run train.py --task clevr_pt
+jac-run scripts/train.py --task clevr_pt
     --subtasks exist isinstance
     --visualize_relation isinstance
     --val_concepts red blue cube
@@ -48,7 +48,7 @@ jac-run train.py --task clevr_pt
 
 detection version
 ```
-jac-run train.py --task clevr_dt
+jac-run scripts/train.py --task clevr_dt
     --subtask filter isinstance
     --visualize_relation isinstance
     --val_concepts blue large
@@ -60,7 +60,7 @@ jac-run train.py --task clevr_dt
 ### isinstance for de-biasing
 setting A (with assistance of 'isinstance' questions)
 ```
-jac-run train.py --task clevr_pt
+jac-run scripts/train.py --task clevr_pt
     --subtasks classification isinstance
     --visual_bias red:large large:red,blue
     --generalization_ratio 0
@@ -69,7 +69,7 @@ jac-run train.py --task clevr_pt
 setting B (without assistance of 'isinstance' questions) by adding `--no_aid`
 option
 ```
-jac-run train.py --task clevr_pt
+jac-run scripts/train.py --task clevr_pt
     --subtasks classification isinstance
     --visual_bias red:large large:red,blue
     --no_aid
@@ -78,7 +78,7 @@ jac-run train.py --task clevr_pt
 
 ### synonym
 ```
-jac-run train.py --task clevr_pt
+jac-run scripts/train.py --task clevr_pt
     --subtasks exist synonym
     --synonym blue red
     --name any_name --silent

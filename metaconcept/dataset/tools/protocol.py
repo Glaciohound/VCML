@@ -16,8 +16,9 @@ class Protocol:
                 self.records_ = json.load(f)
         else:
             self.records_ = {}
-            if gather:
-                self.records_['total'] = []
+
+        if gather:
+            self.records_['total'] = []
 
         if not gather:
             self.records2idx = {key: {k: i for i, k in enumerate(self.records_[key])}
