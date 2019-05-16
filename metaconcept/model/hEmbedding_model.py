@@ -21,6 +21,8 @@ from utils.common import to_numpy, to_normalized, min_fn,\
     matmul, to_tensor, vistb, arange, logit_exist, log_or, logit_xand
 import pprint
 
+from config import args, info
+
 class HEmbedding(nn.Module):
     def __init__(self):
         super(HEmbedding, self).__init__()
@@ -127,7 +129,7 @@ class HEmbedding(nn.Module):
         program_length = data['program'][0].shape[0]
         processed = dict()
 
-        processed['concept_arguments'] = self.concept_embedding(info.to(data['program'])[:, :, 1])
+        processed['concept_arguments'] = self.concept_embedding(infoqto(data['program'])[:, :, 1])
         processed['relation_arguments'] = self.relation_embedding(info.to(data['program'])[:, :, 1])
         processed['all_concepts'] = info.to(self.concept_embedding(Variable(info.to(torch.arange(args.max_concepts)).long())))
         processed['program_length'] = program_length

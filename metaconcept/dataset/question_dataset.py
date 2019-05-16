@@ -16,7 +16,7 @@ class Dataset(torch.utils.data.Dataset):
         self.valid_modes = ['encoded', 'plain']
         self.mode = 'plain'
         self.split = 'total'
-        Dataset.init()
+        self.init()
         self.load_questions(visual_dataset, config)
         self.register_protocol()
 
@@ -88,10 +88,8 @@ class Dataset(torch.utils.data.Dataset):
         return entry
 
     def load_questions(self, visual_dataset, config):
-
         if args.group in ['toy', 'clevr']:
             self.questions = teddy_dataset.ToyDataset.build_question_dataset(visual_dataset, config)
-
         elif args.group == 'gqa':
             with open(args.questions_json, 'r') as f:
                 questions = json.load(f)

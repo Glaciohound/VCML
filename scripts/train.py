@@ -1,24 +1,23 @@
 import sys
-setattr(sys, 'info', None)
-setattr(sys, 'args', None)
-from IPython.core import ultratb
-sys.excepthook = ultratb.FormattedTB(mode='Plain',
-                                     color_scheme='Linux', call_pdb=1)
 import os
+
+from IPython.core import ultratb
+sys.excepthook = ultratb.FormattedTB(mode='Plain', color_scheme='Linux', call_pdb=1)
 if os.getcwd().endswith('scripts'):
     sys.path.append('../')
+
 from config import Config, Info
+
 args = Config()
 info = Info()
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+import matplotlib; matplotlib.use('Agg')
 
 from IPython import embed
+
 import torch
 import torch.nn.functional as F
-from torch.autograd import Variable
+
 from dataset import visual_dataset, question_dataset
 from dataset.tools import protocol, dataset_scheduler
 from model.relation_model import RelationModel
@@ -33,19 +32,18 @@ import numpy as np
 def accuracy_by_type(outputs, data):
     _output = {}
     def binary_right(x, y):
-        return x*y + (1-x)*(1-y)
+        return x * y + (1 - x) * (1 - y)
+
     for i in range(len(outputs)):
         _type = data['type'][i]
         if not _type in _output:
             _output[_type] = []
         if _type == 'classification':
-            right = binary_right((outputs[i].cpu()>0).long(),
-                                 data['object_classes'][i].long()).sum()
+            right = binary_right((outputs[i].cpu()>0).long(), data['object_classes'][i].long()).sum()
             total = (outputs[i] * 0 + 1).sum()
             _output[_type].append(right / total)
         else:
-            _output[_type].append((outputs[i].argmax() ==
-                                   data['answer'][i]).cpu().float().sum())
+            _output[_type].append((outputs[i].argmax() == data['answer'][i]).cpu().float().sum())
 
     return _output
 
@@ -53,12 +51,7 @@ def run_batch(data):
     losses, outputs = info.model(data)
     conceptual = np.array(list(map(lambda x: contains(x, args.conceptual_subtasks),
                                    data['type'].tolist()))).astype(float)
-    weight = info.to(torch.Tensor(conceptual * args.conceptual_weight
-                                  + 1 - conceptual))
-
-    if not info.new_torch:
-        weight = Variable(weight)
-
+    weight = info.to(torch.Tensor(conceptual * args.conceptual_weight + 1 - conceptual))
     loss = (weight * losses).sum()
     accuracy = accuracy_by_type(outputs, data)
 
@@ -69,7 +62,7 @@ def run_batch(data):
     log = {'loss': loss, 'accuracy': total_accuracy}
 
     for k, v in accuracy.items():
-        log[k+'_accuracy'] = torch.stack(v).mean()
+        log[k + '_accuracy'] = torch.stack(v).mean()
 
     return log
 

@@ -1,4 +1,5 @@
-from argparse import ArgumentParser
+import argparse
+import jacinle
 import torch
 import os
 import shutil
@@ -6,9 +7,15 @@ import pprint
 import sys
 import numpy as np
 
+info = None
+args = None
+
+
 class Info():
     def __init__(self):
-        setattr(sys, 'info', self)
+        global info
+        info = self
+
         self.new_torch = torch.__version__.startswith('1')
         args = sys.args
         self.device = torch.device('cuda' if args.use_cuda else 'cpu')\
@@ -18,19 +25,25 @@ class Info():
                              x.cuda() if self.device == 'cuda' else
                              x.cpu())
 
+
 class Config:
     conceptual_subtasks = ['synonym', 'antonym', 'isinstance']
     def __init__(self):
-        setattr(sys, 'args', self)
-        args = self.parse_args()
-        self.__dict__.update(vars(args))
+        global args
+        args = self
+
+        self.dir_args = {}
+        self.raw_args = self.parse_args()
+
+        self.__dict__.update(vars(self.raw_args))
         self.post_process()
 
     def parse_args(self):
-        parser = ArgumentParser()
-        self.dir_args = {}
-        group = 'gqa'
+        parser = argparse.ArgumentParser()
+
+        group = None
         def dir_add_argument(arg_name, **kwargs):
+            assert group is not None
             if not group in self.dir_args:
                 self.dir_args[group] = []
             arg_name = '--' + group + '_' + arg_name[2:]
@@ -40,17 +53,13 @@ class Config:
         parser.add_argument('--task', default='toy',
                             choices=['gqa', 'toy', 'clevr_pt', 'clevr_dt'])
         ''' current model: h_embedding_add2'''
-        parser.add_argument('--model', default='h_embedding_add2',
-                            choices=['relation_model',
-                                     'u_embedding',
-                                     'h_embedding_mul',
-                                     'h_embedding_add',
-                                     'h_embedding_add2'])
+        parser.add_argument('--model', default='h_embedding_add2', choices=[
+            'relation_model', 'u_embedding', 'h_embedding_mul', 'h_embedding_add', 'h_embedding_add2'
+        ])
 
         ''' dir_add_argument() are for adding relative directories '''
         group = 'gqa'
-        parser.add_argument('--gqa_data_dir',
-                            default='/data/vision/billf/scratch/chihan/gqa')
+        parser.add_argument('--gqa_data_dir', default='/data/vision/billf/scratch/chihan/gqa')
         dir_add_argument('--image_dir', default='raw/allImages/images')
         dir_add_argument('--sceneGraph_h5', default='processed/SG.h5')
         dir_add_argument('--sceneGraph_json', default='raw/sceneGraphs/all_sceneGraphs.json')
@@ -58,51 +67,41 @@ class Config:
         dir_add_argument('--protocol_file', default='processed/gqa_protocol.json')
         dir_add_argument('--questions_h5', default='processed/questions')
         dir_add_argument('--questions_json', default='raw/questions/all_balanced_questions.json')
+
         group = 'clevr'
-        parser.add_argument('--clevr_data_dir',
-                            default='/data/vision/billf/scratch/chihan/clevr')
+        parser.add_argument('--clevr_data_dir', default='/data/vision/billf/scratch/chihan/clevr')
         dir_add_argument('--image_dir', default='raw/CLEVR_v1.0/images')
         #dir_add_argument('--sceneGraph_dir', default='raw/CLEVR_v1.0/scenes')
         dir_add_argument('--sceneGraph_dir', default='detections')
         dir_add_argument('--feature_sceneGraph_dir', default='attr_net/results')
         dir_add_argument('--protocol_file', default='processed/clevr_protocol.json')
         dir_add_argument('--vocabulary_file', default='processed/clevr_vocabulary.json')
+
         group = 'toy'
-        parser.add_argument('--toy_data_dir',
-                            default='/data/vision/billf/scratch/chihan/gqa')
+        parser.add_argument('--toy_data_dir', default='/data/vision/billf/scratch/chihan/gqa')
         dir_add_argument('--protocol_file', default='processed/toy_protocol.json')
         dir_add_argument('--vocabulary_file', default='processed/toy_vocabulary.json')
 
         parser.add_argument('--allow_output_protocol', action='store_true')
         parser.add_argument('--toy_objects', type=int, default=3)
         parser.add_argument('--toy_attributes', type=int, default=16)
-        parser.add_argument('--toy_attributesPobject', type=int,
-                            default=4)
+        parser.add_argument('--toy_attributesPobject', type=int, default=4)
         parser.add_argument('--toy_categories', type=int, default=4)
 
-        parser.add_argument('--subtasks', default='exist', nargs='+',
-                            choices=['exist', 'filter', 'query',
-                                     'classification',
-                                     'synonym',
-                                     'isinstance',
-                                     ])
+        parser.add_argument('--subtasks', default='exist', nargs='+', choices=[
+            'exist', 'filter', 'query', 'classification', 'synonym', 'isinstance',
+        ])
 
-        parser.add_argument('--no_aid', action='store_true',
-                            help='setting B in de-biasing experiments')
+        parser.add_argument('--no_aid', action='store_true', help='setting B in de-biasing experiments')
         parser.add_argument('--visual_bias', nargs='+', required=False,
-                            help='adding visual bias in the form of'
-                            '`Attr_0:[Attr_1,Attr2 ...] ...`')
-        parser.add_argument('--synonym', nargs='+',
-                            help='concepts to add synonyms')
+                help='adding visual bias in the form of `Attr_0:[Attr_1,Attr2 ...] ...`')
+        parser.add_argument('--synonym', nargs='+', help='concepts to add synonyms')
         parser.add_argument('--removed_concepts', nargs='+',
-                            help='concepts to deal with in partial or'
-                            'replaced training stage')
+                help='concepts to deal with in partial or replaced training stage')
         parser.add_argument('--questionsPimage', type=int, default=1)
-        parser.add_argument('--incremental_training', nargs='+', required=False,
-                            choices=['full', 'partial', 'replaced'],
-                            default=['full'],
-                            help='partial for no asking particular concepts'
-                                'replaced for using a synonym as a substitute in tasks')
+        parser.add_argument('--incremental_training', nargs='+', required=False, choices=['full', 'partial', 'replaced'],
+                default=['full'],
+                help='partial for no asking particular conceptsreplaced for using a synonym as a substitute in tasks')
         parser.add_argument('--val_concepts', nargs='+', required=False,
                             help='concepts for validation')
         parser.add_argument('--val_by_classification', nargs='+', type=str,
@@ -222,6 +221,7 @@ class Config:
                 self.visual_bias = config
 
     def print(self):
-        pprint.pprint('Arguments: ------------------------')
-        pprint.pprint(self.__dict__)
-        pprint.pprint('-----------------------------------')
+        print('Arguments: ------------------------')
+        jacinle.kvprint(self.__dict__)
+        print('-----------------------------------')
+
