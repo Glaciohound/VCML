@@ -14,7 +14,7 @@ def build_tokenMap(obj, vocabulary, add_special_tokens=False):
             l += special_tokens
     for c in vocabulary.keys():
         item = vocabulary[c]
-        tokenMap[c+'2idx'], tokenMap['idx2'+c] =\
+        tokenMap[c + '2idx'], tokenMap['idx2' + c] = \
             ({y: i for i, y in enumerate(item)}, item)
     for k, v in tokenMap.items():
         setattr(obj, k, v)
@@ -46,6 +46,7 @@ def encode_question(question, protocol, allow_unk=False):
         seq_idx.append(token)
     seq_idx = [protocol['words', x] for x in seq_idx]
     return np.array(seq_idx)
+
 
 def filter_questions(question, mode):
     if mode == 'None':

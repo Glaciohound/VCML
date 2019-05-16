@@ -3,29 +3,15 @@ import jacinle
 import torch
 import os
 import shutil
-import pprint
 import sys
-import numpy as np
 
-info = None
-args = None
+from metaconcept import set_global_args, set_global_info
 
 
-def set_global_info(new_info):
-    global info
-    assert info is None
-    info = new_info
-
-
-def set_global_args(new_args):
-    global args
-    assert args is None
-    args = new_args
-
-
-class Info():
-    def __init__(self):
+class Info(object):
+    def __init__(self, args):
         self.new_torch = torch.__version__.startswith('1')
+
         if args.new_torch:
             self.device = torch.device('cuda' if args.use_cuda else 'cpu')
         else:
@@ -40,7 +26,7 @@ class Info():
         return x.cuda() if self.device == 'cuda' else x.cpu()
 
 
-class Config:
+class Config(object):
     def __init__(self):
         self.dir_args = {}
         self.raw_args = self.parse_args()
@@ -85,7 +71,7 @@ class Config:
         group = 'clevr'
         parser.add_argument('--clevr_data_dir', default='/data/vision/billf/scratch/chihan/clevr')
         dir_add_argument('--image_dir', default='raw/CLEVR_v1.0/images')
-        #dir_add_argument('--sceneGraph_dir', default='raw/CLEVR_v1.0/scenes')
+        # dir_add_argument('--sceneGraph_dir', default='raw/CLEVR_v1.0/scenes')
         dir_add_argument('--sceneGraph_dir', default='detections')
         dir_add_argument('--feature_sceneGraph_dir', default='attr_net/results')
         dir_add_argument('--protocol_file', default='processed/clevr_protocol.json')

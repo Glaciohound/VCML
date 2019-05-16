@@ -1,7 +1,5 @@
 from torch.utils.data import DataLoader
-import sys
-args = sys.args
-info = sys.info
+from metaconcept import args
 
 
 def get_dataloaders(dataset_kit):

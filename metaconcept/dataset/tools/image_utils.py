@@ -14,6 +14,7 @@ from PIL import Image
 
 import jaclearn.vision.coco.mask_utils as mask_utils
 
+
 def _is_object_annotation_available(scene):
     objects = scene['objects']
     if isinstance(objects, dict):
@@ -50,6 +51,7 @@ def annotate_objects(scene, from_shape=None, to_shape=None):
         boxes *= ratio
     return {'objects': boxes}
 
+
 def get_imageCrops(scene):
     output = deepcopy(scene)
     image = Image.open(scene['image_filename']).convert('RGB')
@@ -67,6 +69,7 @@ def get_imageNames(path):
     all_filenames = [name for name in all_filenames if
                      name.endswith('jpg') or name.endswith('png')]
     return all_filenames
+
 
 def match_objects(scene, inplace=False):
     if 'objects' not in scene or 'objects_detection' not in scene:

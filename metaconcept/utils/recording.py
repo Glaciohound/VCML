@@ -1,14 +1,14 @@
 import os
-import matplotlib
-matplotlib.use('Agg')
+import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
-args = sys.args
-info = sys.info
+
+from metaconcept import info, args
+
 
 class Recording:
     length_limit = 70
+
     def __init__(self, name='anonymous', mode='average', momentum=0.99):
         self.args = args
         self.info = info
@@ -34,17 +34,17 @@ class Recording:
         self.previous = value_dict
         self.previous_float = {k: float(v) for k, v in self.previous.items()}
 
-        self.weight_total = self.weight_total*self.momentum +\
-            (1-self.momentum)
+        self.weight_total = self.weight_total * self.momentum + \
+                            (1 - self.momentum)
 
         for k, new_value in self.previous_float.items():
             self.log[k].append(new_value)
             v = self.values[k]
             if self.mode == 'average':
-                #self.values[k] = (v * self.n + new_value) / (self.n + 1)
+                # self.values[k] = (v * self.n + new_value) / (self.n + 1)
                 self.values[k] = np.array(self.log[k]).mean()
             else:
-                self.values[k] = (v*self.momentum + (1-self.momentum)*new_value)
+                self.values[k] = (v * self.momentum + (1 - self.momentum) * new_value)
 
         self.n += 1
 
@@ -88,4 +88,4 @@ class Recording:
 
     def strings(self):
         return (', '.join(['%s:%.4f' % (k, v) for k, v in self.data.items()]),
-                ', '.join(['%s:%.3f' % (k[0]+k[-1], v) for k, v in self.data.items()]))
+                ', '.join(['%s:%.3f' % (k[0] + k[-1], v) for k, v in self.data.items()]))

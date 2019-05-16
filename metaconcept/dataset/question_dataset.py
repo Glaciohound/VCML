@@ -1,17 +1,18 @@
-import torch
-import json
-import numpy as np
-from dataset.tools import program_utils, question_utils
-from dataset.toy import teddy_dataset
-import sys
-args = sys.args
-info = sys.info
-from dataset.tools import collate_utils
 import copy
+import json
+
+import numpy as np
+import torch
+
+from metaconcept import args, info
+from metaconcept.dataset.tools import program_utils, question_utils
+from metaconcept.dataset.tools import collate_utils
+from metaconcept.dataset.toy import teddy_dataset
 
 
 class Dataset(torch.utils.data.Dataset):
     inited = False
+
     def __init__(self, visual_dataset, config):
         self.valid_modes = ['encoded', 'plain']
         self.mode = 'plain'

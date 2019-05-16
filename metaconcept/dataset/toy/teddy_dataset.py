@@ -1,11 +1,9 @@
-from dataset.tools import protocol
 import numpy as np
 from tqdm import tqdm
-from utils.common import random_one
-import sys
-args = sys.args
-info = sys.info
 
+from metaconcept import info, args
+from metaconcept.dataset.tools import protocol
+from metaconcept.utils.common import random_one
 
 synonym_dict = {
     'toy': {
@@ -44,8 +42,8 @@ synonym_dict = {
     }
 }
 
-class ToyDataset:
 
+class ToyDataset:
     def __init__(self):
         pass
 
@@ -61,10 +59,10 @@ class ToyDataset:
         sceneGraphs = {}
         print('building teddy sceneGraphs')
         for i in tqdm(range(args.max_sizeDataset)):
-            split =\
-                'train' if i < 0.8 * args.max_sizeDataset or args.no_validation else\
-                'val' if i < 1 * args.max_sizeDataset else\
-                'test'
+            split = \
+                'train' if i < 0.8 * args.max_sizeDataset or args.no_validation else \
+                    'val' if i < 1 * args.max_sizeDataset else \
+                        'test'
             scene = {'objects': {}, 'split': split, 'image_id': format(i)}
             for j in range(args.toy_objects):
                 categories = np.random.choice(list(vocabulary.records),
@@ -75,7 +73,6 @@ class ToyDataset:
                 scene['objects'].update({str(len(scene['objects'])): obj})
             sceneGraphs[str(i)] = scene
         return sceneGraphs
-
 
     @classmethod
     def build_question_dataset(cls, visual_dataset, config):
@@ -89,7 +86,7 @@ class ToyDataset:
         elif config == 'replaced':
             for attr in args.removed_concepts:
                 if attr in all_concepts:
-                    all_concepts[attr] = [attr+'_syn']
+                    all_concepts[attr] = [attr + '_syn']
         if 'synonym' in args.subtasks:
             _all_concepts = {}
             for attr in all_concepts.keys():
@@ -108,7 +105,7 @@ class ToyDataset:
             task_concepts['val'] = args.val_concepts
         else:
             task_concepts['val'] = np.random.choice(list(all_concepts),
-                                                    int(len(all_concepts)*args.generalization_ratio),
+                                                    int(len(all_concepts) * args.generalization_ratio),
                                                     replace=False)
         task_concepts['train'] = np.setdiff1d(list(all_concepts), task_concepts['val'])
         task_concepts['total'] = all_concepts
@@ -133,7 +130,7 @@ class ToyDataset:
                 if not args.conceptual or args.no_aid or \
                         np.random.random() > args.conceptual_question_ratio:
                     _visual_subtask = np.random.choice(visual_subtasks)
-                    if _visual_subtask == 'classification'\
+                    if _visual_subtask == 'classification' \
                             or (split != 'train' and args.val_by_classification):
                         question = cls.classification_task(scene, config)
                     elif _visual_subtask == 'exist':
@@ -172,7 +169,7 @@ class ToyDataset:
 
         question = {
             'question': 'Please classifiy objects in the image on concepts of {}.'
-            .format(', '.join(concepts_to_classify)),
+                .format(', '.join(concepts_to_classify)),
             'semantic': [
                 {'operation': 'classify',
                  'argument': name,
@@ -198,9 +195,9 @@ class ToyDataset:
             'question': 'Are there any %s objects in the image?' % queried,
             'semantic': [
                 {'operation': 'select', 'argument': '{0} ({1})'.format(queried, ', '.join(which)),
-                'dependencies': []},
+                 'dependencies': []},
                 {'operation': 'exist', 'argument': '?',
-                'dependencies': [0]}
+                 'dependencies': [0]}
             ],
             'answer': answer,
             'type': 'filter-exist',
@@ -258,7 +255,7 @@ class ToyDataset:
             which_3 = list(set(which_2).intersection(set(which_3)))
             answer = obj[cat_4]
             if len(set(which_1).intersection(set(which_2)).intersection(set(which_3))) == 1 and \
-                    answer in args.task_concepts[config][split] and\
+                    answer in args.task_concepts[config][split] and \
                     set([attr_1, attr_2, attr_3, answer]).issubset(set(args.task_concepts[config]['total'])):
                 found = True
                 break
@@ -270,7 +267,7 @@ class ToyDataset:
 
         question = {
             'question': 'What is the %s of the %s, %s, %s objects in the image'
-                % (cat_4, attr_1, attr_2, attr_3),
+                        % (cat_4, attr_1, attr_2, attr_3),
             'semantic': [
                 {'operation': 'select',
                  'argument': '{0} ({1})'.format(attr_1, ', '.join(which_1)),
@@ -293,8 +290,8 @@ class ToyDataset:
         counter = cls.conceptualQuestion_counter
         task_concepts = args.task_concepts[config][split]
         queried_1 = random_one(task_concepts)
-        counter['synonym'] += 0.5 * (1 + 1/(len(task_concepts)-1))
-        if len(task_concepts) == 1 or\
+        counter['synonym'] += 0.5 * (1 + 1 / (len(task_concepts) - 1))
+        if len(task_concepts) == 1 or \
                 counter['synonym'] >= 1:
             counter['synonym'] -= 1
             queried_2 = queried_1

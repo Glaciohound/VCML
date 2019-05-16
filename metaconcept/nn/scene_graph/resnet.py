@@ -15,7 +15,7 @@ from .scene_graph import SceneGraph
 import sys
 info = sys.info
 
-class Attribute_Network(nn.Module):
+class ResNetSceneGraph(nn.Module):
     def __init__(self):
         super().__init__()
 

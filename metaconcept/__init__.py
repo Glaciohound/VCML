@@ -7,5 +7,17 @@
 #
 # Distributed under terms of the MIT license.
 
-from .config import info, args
+info = None
+args = None
 
+
+def set_global_info(new_info):
+    global info
+    assert info is None
+    info = new_info
+
+
+def set_global_args(new_args):
+    global args
+    assert args is None
+    args = new_args

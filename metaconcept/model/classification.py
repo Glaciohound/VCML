@@ -10,30 +10,25 @@ import os
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from copy import deepcopy
-import sys
-args = sys.args
-info = sys.info
-from model.utils.resnet import Attribute_Network
+
+from metaconcept import info, args
+from metaconcept.nn.scene_graph import ResNetSceneGraph
+
 
 class Classification(nn.Module):
     def __init__(self):
         super(Classification, self).__init__()
-        self.build()
+        self.feature_mlp = self.build_mlp(args.feature_dim, args.embed_dim, args.hidden_dim)
+        self.resnet_model = ResNetSceneGraph()
 
-    def build(self):
-        self.feature_mlp = self.build_mlp(args.feature_dim, args.embed_dim,
-                                          'feature', args.hidden_dim)
-        self.resnet_model = Attribute_Network()
-
-    def build_mlp(self, dim_in, dim_out, name, dim_hidden):
+    def build_mlp(self, dim_in, dim_out, dim_hidden):
         if dim_hidden <= 0:
             return nn.Linear(dim_in, dim_out)
-        linear1 = nn.Linear(dim_in, dim_hidden)
-        linear2 = nn.Linear(dim_hidden, dim_out)
-        setattr(self, name+'_linear1', linear1)
-        setattr(self, name+'_linear2', linear2)
-        return lambda x: linear2(torch.sigmoid(linear1(x)))
-        #return lambda x: linear2(linear1(x))
+        return nn.Sequential([
+            nn.Linear(dim_in, dim_hidden),
+            nn.Sigmoid(),
+            nn.Linear(dim_hidden, dim_out)
+        ])
 
     def forward(self, data):
         batch_size = data['answer'].shape[0]

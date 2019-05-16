@@ -3,7 +3,9 @@
 from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 import numpy as np
 from random import randint
-# All of these need to be called on PIL imagez
+
+# All of these need to be called on PIL image
+
 
 class SquarePad(object):
     def __call__(self, img):

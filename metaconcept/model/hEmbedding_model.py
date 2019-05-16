@@ -11,88 +11,63 @@ import os
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from copy import deepcopy
-import sys
-args = sys.args
-info = sys.info
 import matplotlib.pyplot as plt
 import numpy as np
-from model.utils.resnet import Attribute_Network
-from utils.common import to_numpy, to_normalized, min_fn,\
-    matmul, to_tensor, vistb, arange, logit_exist, log_or, logit_xand
+
+from metaconcept import info, args
+from metaconcept.nn.scene_graph import ResNetSceneGraph
+from metaconcept.utils.common import to_numpy, to_normalized, min_fn, matmul, to_tensor, vistb, arange, logit_exist, log_or, logit_xand
 import pprint
 
-from config import args, info
 
 class HEmbedding(nn.Module):
     def __init__(self):
         super(HEmbedding, self).__init__()
-        if args.model == 'h_embedding_mul':
-            self.model = 'mul'
-        elif args.model == 'h_embedding_add':
-            self.model = 'add'
-        elif args.model == 'h_embedding_add2':
-            self.model = 'add2'
-        self.build()
 
-    def build(self):
+        assert args.model.startswith('h_embedding')
+        self.model = args.model[len('h_embedding_'):]
+
         if self.model == 'add2':
             self.obj_embed_dim = args.embed_dim // 2
         else:
             self.obj_embed_dim = args.embed_dim
 
-        self.attribute_embedding = self.build_embedding(args.max_concepts, args.feature_dim,
-                                                        'attribute', 0)
-        self.feature_mlp = self.build_mlp(args.feature_dim, self.obj_embed_dim,
-                                             'feature', args.hidden_dim)
+        self.attribute_embedding = self.build_embedding(args.max_concepts, args.feature_dim, 'attribute', 0)
+        self.feature_mlp = self.build_mlp(args.feature_dim, self.obj_embed_dim, 'feature', args.hidden_dim)
 
-        self.concept_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
-                                                      'concept', args.hidden_dim)
-        self.relation_embedding = self.build_embedding(args.max_concepts, args.embed_dim,
-                                                    'relation', 0, matrix=self.model=='mul')
+        self.concept_embedding = self.build_embedding(args.max_concepts, args.embed_dim, 'concept', args.hidden_dim)
+        self.relation_embedding = self.build_embedding(args.max_concepts, args.embed_dim, 'relation', 0, matrix=self.model=='mul')
 
-        self.resnet_model = Attribute_Network()
+        self.resnet_model = ResNetSceneGraph()
+        self.register_buffer('true_th', info.to(torch.Tensor([args.true_th])))
+        self.register_buffer('same_class_th', info.to(torch.Tensor([args.true_th])))
+        self.register_buffer('temperature', info.to(torch.Tensor([args.temperature_init])))
 
-        self.true_th_ = nn.Parameter(info.to(torch.Tensor([args.true_th])))
-        self.same_class_th_ = nn.Parameter(info.to(torch.Tensor([args.true_th])))
-        self.temperature_ = nn.Parameter(info.to(torch.Tensor([args.temperature_init])))
+        self.inf = 100
 
-        self.similarity = F.cosine_similarity
-        self.scale = lambda x: self.temperature * (x-self.true_th)
-        self.huge_value = 100
+    def scale(self, tensor):
+        return self.temperature * (tensor - self.true_th)
 
+    def similarity(self, a, b, *args, **kwargs):
+        return F.cosine_similarity(a, b, *args, **kwargs)
 
-    @property
-    def temperature(self):
-        return self.temperature_.detach()
-
-    @property
-    def true_th(self):
-        return self.true_th_.detach()
-        #return self.true_th_
-
-    @property
-    def same_class_th(self):
-        return self.same_class_th_.detach()
-
-
-    ''' logit function taking into (x, y) and compute the logit for the similarity probability between them '''
     def logit_fn(self, *arg, threshold=None, **kwarg):
+        """logit function taking into (x, y) and compute the logit for the similarity probability between them."""
         if not threshold:
             threshold = self.true_th
         return self.temperature * (self.similarity(*arg, **kwarg) - threshold)
 
-    def build_mlp(self, dim_in, dim_out, name, dim_hidden):
+    def build_mlp(self, dim_in, dim_out, dim_hidden):
         if dim_hidden <= 0:
             return nn.Linear(dim_in, dim_out)
-        linear1 = nn.Linear(dim_in, dim_hidden)
-        linear2 = nn.Linear(dim_hidden, dim_out)
-        setattr(self, name+'_linear1', linear1)
-        setattr(self, name+'_linear2', linear2)
-        #return lambda x: linear2(torch.sigmoid(linear1(x)))
-        return lambda x: linear2(linear1(x))
+        return nn.Sequential([
+            nn.Linear(dim_in, dim_hidden),
+            nn.Sigmoid(),
+            nn.Linear(dim_hidden, dim_out)
+        ])
 
     def build_embedding(self, n, dim, name, dim_hidden, matrix=False):
-        '''  building the parameters for embedding '''
+        """building the parameters for embedding"""
         if dim_hidden <= 0:
             if not matrix:
                 hidden_embedding = nn.Embedding(n, dim)
@@ -123,7 +98,6 @@ class HEmbedding(nn.Module):
                 return oneD_embedding.view(matrix_shape)
             return matrix_embedding
 
-
     def forward(self, data):
         batch_size = data['answer'].shape[0]
         program_length = data['program'][0].shape[0]
@@ -133,9 +107,11 @@ class HEmbedding(nn.Module):
         processed['relation_arguments'] = self.relation_embedding(info.to(data['program'])[:, :, 1])
         processed['all_concepts'] = info.to(self.concept_embedding(Variable(info.to(torch.arange(args.max_concepts)).long())))
         processed['program_length'] = program_length
+
         def load_list(k):
             if k in data:
                 processed[k] = [info.to(to_tensor(v)) for v in data[k]]
+
         load_list('scene')
         load_list('object_classes')
         load_list('answer')
@@ -157,8 +133,7 @@ class HEmbedding(nn.Module):
     ''' fun one piece of data '''
     def run_piece(self, data, processed, i,
                   losses, outputs):
-
-        ''' object inputs and concept embeddings '''
+        """object inputs and concept embeddings."""
 
         if info.visual_dataset.mode == 'encoded_sceneGraph':
             object_input = self.embed_without_bg(processed['scene'][i])
@@ -171,8 +146,7 @@ class HEmbedding(nn.Module):
 
         all_concepts = processed['all_concepts']
         if self.model == 'add2':
-            all_concepts = torch.cat([all_concepts[:, :self.obj_embed_dim],
-                                      to_normalized(all_concepts[:, self.obj_embed_dim:])], dim=1)
+            all_concepts = torch.cat([all_concepts[:, :self.obj_embed_dim], to_normalized(all_concepts[:, self.obj_embed_dim:])], dim=1)
 
         ''' pre-processing: calculating all obj-feasible-concept logits '''
         concept_names = info.vocabulary.concepts
@@ -186,7 +160,7 @@ class HEmbedding(nn.Module):
         ''' self_logits[i, j] = <obj_i, operator_j, concept_j> '''
         self_logits = torch.diagonal(logits, dim1=1, dim2=2)
         other_logits = min_fn(self_logits[:, None, :], logits)
-        other_logits[(self_logits[:, :, None] == logits)] = -self.huge_value
+        other_logits[(self_logits[:, :, None] == logits)] = -self.inf
         submax_logits, subargmax = other_logits.max(2)
         '''
         conditinal probability:
@@ -218,7 +192,7 @@ class HEmbedding(nn.Module):
             num_objects = data['object_lengths'][i]
 
         ''' initializing attentions '''
-        init_attention = lambda n: Variable(info.to(torch.ones(n))) * self.huge_value
+        init_attention = lambda n: Variable(info.to(torch.ones(n))) * self.inf
         attention = {'concepts': init_attention(args.max_concepts),
                      'objects': init_attention(num_objects)}
         def attention_copy(attention_):
@@ -264,9 +238,9 @@ class HEmbedding(nn.Module):
 
             if op_s == 'select':
                 if arg_s == 'object_only':
-                    attention['concepts'][:] = -self.huge_value
+                    attention['concepts'][:] = -self.inf
                 elif arg_s == 'concept_only':
-                    attention['objects'][:] = -self.huge_value
+                    attention['objects'][:] = -self.inf
                 else:
                     raise Exception('unsupported select argument')
 
@@ -280,20 +254,20 @@ class HEmbedding(nn.Module):
                                                   data['program'][i, j, 1])
                 penalty_loss = penalty_loss + exist_loss
                 attention['concepts'][torch.arange(args.max_concepts).long() != arg] =\
-                    -self.huge_value
+                    -self.inf
 
             elif op_s == 'choose':
-                assign(attention, -self.huge_value)
-                attention['concepts'][arg] = self.huge_value
+                assign(attention, -self.inf)
+                attention['concepts'][arg] = self.inf
 
             elif op_s == 'exist':
-                attention['concepts'][len(info.protocol['concepts']):] = -self.huge_value
+                attention['concepts'][len(info.protocol['concepts']):] = -self.inf
 
                 s = max(attention['concepts'].max(), attention['objects'].max())
                 yes = s
                 no = -yes
 
-                assign(attention, -self.huge_value)
+                assign(attention, -self.inf)
                 attention['concepts'][info.protocol['concepts', 'yes']] = yes
                 attention['concepts'][info.protocol['concepts', 'no']] = no
 
@@ -326,7 +300,7 @@ class HEmbedding(nn.Module):
                     to_compare = to_compare[:, -dim:]
                     _output = self.logit_fn(to_compare, transferred[None])
 
-                assign(attention, -self.huge_value)
+                assign(attention, -self.inf)
                 if op_s.endswith('c'):
                     attention['concepts'] = _output
                 else:
@@ -340,7 +314,7 @@ class HEmbedding(nn.Module):
                 raise Exception('no such operation %s supported' % op_s)
 
         ''' modyfying values'''
-        attention['concepts'][len(info.protocol['concepts']):] = - self.huge_value
+        attention['concepts'][len(info.protocol['concepts']):] = - self.inf
         log_softmax = F.log_softmax(attention['concepts'], dim=0)
         losses[i] = F.nll_loss(log_softmax[None], processed['answer'][i][None]) +\
             penalty_loss * args.penalty
@@ -358,7 +332,6 @@ class HEmbedding(nn.Module):
         x = x+1
         return self.attribute_embedding(Variable(x)).sum(-2)
 
-
     def get_embedding(self, name, relational=False):
         embedding = self.concept_embedding\
             if not relational\
@@ -366,10 +339,7 @@ class HEmbedding(nn.Module):
         return embedding(Variable(info.to(to_tensor([
             info.protocol['concepts', name]]))))[0]
 
-
-
-    ''' Codes for visualizing '''
-
+    # Codes for visualizing
 
     def visualize_embedding(self, relation_type=None):
         to_visualize = {}
@@ -515,15 +485,12 @@ class HEmbedding(nn.Module):
         self.savefig(names[2])
         plt.clf()
 
-
     ''' Utility codes '''
-
 
     def init(self):
         inited = []
         for name, param in self.named_parameters():
-            if not name.startswith('resnet_model')\
-                    and name not in ['temperature_', 'true_th_', 'same_class_th_']:
+            if not name.startswith('resnet_model'):
                 inited.append(name)
                 if info.new_torch:
                     init.normal_(param, 0, args.init_variance)

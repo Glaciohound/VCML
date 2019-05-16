@@ -1,5 +1,5 @@
 import numpy as np
-from utils.common import to_tensor
+from metaconcept.utils.common import to_tensor
 import torch
 
 '''

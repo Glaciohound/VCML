@@ -5,7 +5,7 @@ def preprocess_operation(cur):
         splits = operation.split(' ')
         if len(splits) > 2:
             operation = splits[0]
-            #category = ''.join([splits[1]] + [s[0].upper()+s[1:] for s in splits[2:]])
+            # category = ''.join([splits[1]] + [s[0].upper()+s[1:] for s in splits[2:]])
             category = '_'.join(splits[1:])
         else:
             operation, category = splits
@@ -16,7 +16,7 @@ def preprocess_operation(cur):
     if ' (' in argument:
         argument, obj = argument.split(' (')
         obj = obj.split(')')[0].split(',')
-    elif argument=='scene':
+    elif argument == 'scene':
         obj = 'scene'
     else:
         obj = None
@@ -30,6 +30,7 @@ def preprocess_operation(cur):
         argument = argument.replace(' ', '_')
 
     return operation, category, argument, obj
+
 
 def semantic2program_r(program_list):
     result = []
@@ -72,9 +73,8 @@ def semantic2program_r(program_list):
             'argument': mode,
         })
 
-
     def set_same(argument, category):
-        argument, inputType = (argument, 'same_among') if argument!='' else (category, 'same_between')
+        argument, inputType = (argument, 'same_among') if argument != '' else (category, 'same_between')
         if inputType == 'same_between':
             set_mode('both')
         set_insert([argument, 'attr_only'])
@@ -84,7 +84,7 @@ def semantic2program_r(program_list):
         set_insert('boolean_not')
 
     def set_filter(category, argument, not_=False):
-        #TODO how to utilize the category information here?
+        # TODO how to utilize the category information here?
         append_ = [{'argument': argument, 'category': category}]
         if not_:
             append_.append('not')
@@ -96,7 +96,7 @@ def semantic2program_r(program_list):
         set_insert(operation)
 
     def set_select(argument, obj=None):
-        #TODO how to utilize the category information here?
+        # TODO how to utilize the category information here?
         set_scene()
         if argument not in ['_', 'this']:
             append_ = {'argument': argument,
@@ -107,7 +107,7 @@ def semantic2program_r(program_list):
             set_insert(append_)
 
     def set_choose(category, argument):
-        if category=='relation':
+        if category == 'relation':
             set_mode('both')
         arg1, arg2 = argument.split('|')
         set_insert([{'category': category, 'argument': arg1},
@@ -119,7 +119,7 @@ def semantic2program_r(program_list):
         argument
         set_select(another)
 
-        if category=='relation':
+        if category == 'relation':
             set_mode('both')
 
         set_insert(category)
@@ -182,7 +182,7 @@ def semantic2program_r(program_list):
             set_not()
 
         elif operation in ['and', 'or']:
-            #logical operations
+            # logical operations
             set_logical(operation)
 
         elif operation == 'query':
@@ -199,15 +199,18 @@ def semantic2program_r(program_list):
 
 def tree2postfix(program_tree):
     output = []
+
     def helper(current):
         for node in current['dependencies']:
             helper(node)
         output.append(current)
+
     helper(program_tree)
     for node in output:
         if 'dependencies' in node:
             node.pop('dependencies')
     return output
+
 
 def function2str(f):
     return 'Function[%s, %s](%s)' % (
@@ -215,6 +218,7 @@ def function2str(f):
         f['category'],
         f['argument']
     )
+
 
 def function2compactStr(f):
     category = f['category'] if f['category'] in ['s', 'o', 'same1', 'same2'] else ''
@@ -227,10 +231,13 @@ def function2compactStr(f):
         f['argument'],
     )
 
-''' semantic translator for u_embedding'''
-def semantic2program_u(program_list):
 
+''' semantic translator for u_embedding'''
+
+
+def semantic2program_u(program_list):
     output = []
+
     def add_operation(x, y):
         output.append({'operation': x,
                        'argument': y})
@@ -272,9 +279,11 @@ def semantic2program_u(program_list):
 
 
 ''' semantic translator for h_embedding'''
-def semantic2program_h(program_list):
 
+
+def semantic2program_h(program_list):
     output = []
+
     def add_operation(x, y):
         output.append({'operation': x,
                        'argument': y})

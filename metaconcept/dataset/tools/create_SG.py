@@ -1,10 +1,10 @@
 import json
 import math
 from tqdm import tqdm
-from config import Config
 from math import floor
 import h5py as h5
 import numpy as np
+
 
 def encode_box(region, org_h, org_w, img_long_size):
     x = region['x']
@@ -33,6 +33,7 @@ def encode_box(region, org_h, org_w, img_long_size):
     # also convert to center-coord oriented
     box = np.asarray([x+floor(w/2), y+floor(h/2), w, h], dtype=np.int32)
     return box
+
 
 def encode_objects(graph_data, vocabulary, img_long_sizes):
     max_nNames = max([len(obj['names']) for scene in graph_data for obj in scene['objects'].values()])
@@ -68,6 +69,7 @@ def encode_objects(graph_data, vocabulary, img_long_sizes):
     for k, boxes in encoded_boxes.items():
         encoded_boxes[k] = np.vstack(boxes)
     return encoded_labels, encoded_attributes, encoded_boxes, obj_ranges
+
 
 def encode_relations(graph_data, vocabulary):
     encoded_rels = []  # encoded relationship tuple
@@ -119,6 +121,7 @@ def load_sceneGraph(input_file):
         graph_data.append(graph)
     return graph_data
 
+
 def main(args):
     pbar = tqdm(total=12, desc='creating SG_h5', postfix='reading file')
 
@@ -169,6 +172,8 @@ def main(args):
     pbar.update()
     pbar.close()
 
+
 if __name__ == '__main__':
+    from metaconcept.config import Config
     args = Config()
     main(args)

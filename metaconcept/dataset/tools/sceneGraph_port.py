@@ -1,12 +1,10 @@
 import os
-import sys
-args = sys.args
-info = sys.info
 import json
 import pickle
 from glob import glob
 from functools import reduce
-from utils.common import union, pick_one, get_imageId
+from metaconcept import info, args
+from metaconcept.utils.common import union, pick_one, get_imageId
 from collections import Counter
 
 
@@ -31,7 +29,7 @@ def load_sceneGraphs(filename):
             if k != 'objects':
                 scene[k] = v
             else:
-                scene['objects'] =\
+                scene['objects'] = \
                     {str(i): obj for i, obj in enumerate(scene['objects'])}
         sceneGraphs[image_id] = scene
 
@@ -45,6 +43,7 @@ def register_vocabulary(sceneGraphs):
                 for cat, attr in obj.items():
                     if isinstance(attr, str):
                         info.vocabulary[cat, attr]
+
 
 def merge_sceneGraphs(x, y):
     sceneGraphs = {}
@@ -80,8 +79,8 @@ def default_scene(filename):
                 scene['split'] = split
     return (image_id, scene)
 
-def filter_sceneGraphs(sceneGraphs, filter_fn, inplace=False):
 
+def filter_sceneGraphs(sceneGraphs, filter_fn, inplace=False):
     infeasible_split = [s['split'] for s in sceneGraphs.values()
                         if not filter_fn(s)]
     print('filtered scene graphs: ', Counter(infeasible_split))
@@ -102,8 +101,8 @@ config format:
     {<Attr_main>: [Attr_sub0, Attr_sub1], ...}
 '''
 
-def customize_filterFn(config, val_reverse=False):
 
+def customize_filterFn(config, val_reverse=False):
     def output_fn(scene):
 
         if not 'objects' in scene:
@@ -113,7 +112,7 @@ def customize_filterFn(config, val_reverse=False):
 
         for obj in scene['objects'].values():
             attrs = set([at for at in obj.values()
-                             if isinstance(at, str)])
+                         if isinstance(at, str)])
             for main, subs in config.items():
                 if main in attrs:
                     if not reverse:

@@ -1,7 +1,5 @@
-import sys
-args = sys.args
-info = sys.info
-from dataset import dataloader
+from metaconcept import args, info
+from metaconcept.dataset.dataloader import get_dataloaders
 
 
 def build_incremental_training_datasets(
@@ -25,14 +23,12 @@ def build_incremental_training_datasets(
 
         (new_dataset['train_loader'],
          new_dataset['val_loader'],
-         new_dataset['test_loader']) =\
-            dataloader.get_dataloaders(new_dataset)
+         new_dataset['test_loader']) = get_dataloaders(new_dataset)
         dataset_all.append(new_dataset)
     return dataset_all
 
 
 class DatasetScheduler:
-
     def __init__(self):
         self.dataset_count = -1
         self.step(1)

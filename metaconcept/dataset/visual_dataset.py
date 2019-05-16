@@ -1,17 +1,18 @@
+import os
+from copy import deepcopy
+from PIL import Image
+
+import h5py as h5
 import numpy as np
 import torch
-from PIL import Image
 from torchvision.transforms import Resize, Compose, ToTensor, Normalize
-from copy import deepcopy
-from dataset.tools.image_transforms import SquarePad
-from dataset.tools import sceneGraph_port, image_utils
-import h5py as h5
-import os
-from dataset.tools import protocol
-from dataset.toy import teddy_dataset
-import sys
-args = sys.args
-info = sys.info
+
+from metaconcept import info, args
+from metaconcept.dataset.tools.image_transforms import SquarePad
+from metaconcept.dataset.tools import sceneGraph_port, image_utils
+from metaconcept.dataset.tools import protocol
+from metaconcept.dataset.toy import teddy_dataset
+
 
 class Dataset(torch.utils.data.Dataset):
 
@@ -34,7 +35,7 @@ class Dataset(torch.utils.data.Dataset):
 
         self.sceneGraphs = deepcopy(cls.main_sceneGraphs)
         if args.visual_bias and config == 'full':
-            self.filter_fn =\
+            self.filter_fn = \
                 sceneGraph_port.customize_filterFn(args.visual_bias,
                                                    val_reverse=True,
                                                    )
@@ -44,7 +45,6 @@ class Dataset(torch.utils.data.Dataset):
                 inplace=True,
             )
         self.split()
-
 
     def __getitem__(self, index):
         try:
@@ -69,11 +69,11 @@ class Dataset(torch.utils.data.Dataset):
             else:
                 im_size = (args.image_scale, args.image_scale, img_scale_factor)
 
-            gt_boxes, gt_classes, gt_attributes =\
-                [e[self.obj_ranges[index, 0] : self.obj_ranges[index, 1]]
-                for e in [self.gt_boxes, self.gt_classes, self.gt_attributes]]
-            gt_rels = self.gt_relations\
-                [self.rel_ranges[index, 0]  : self.rel_ranges[index, 1]]
+            gt_boxes, gt_classes, gt_attributes = \
+                [e[self.obj_ranges[index, 0]: self.obj_ranges[index, 1]]
+                 for e in [self.gt_boxes, self.gt_classes, self.gt_attributes]]
+            gt_rels = self.gt_relations \
+                [self.rel_ranges[index, 0]: self.rel_ranges[index, 1]]
 
             entry = {
                 'index': index,
@@ -126,7 +126,6 @@ class Dataset(torch.utils.data.Dataset):
 
             return output
 
-
     @classmethod
     def load_graphs(cls):
         info.vocabulary = protocol.Protocol(args.allow_output_protocol,
@@ -135,16 +134,15 @@ class Dataset(torch.utils.data.Dataset):
                                             use_special_tokens=False)
 
         if args.group == 'gqa':
-
             SG_h5 = h5.File(args.sceneGraph_h5, 'r')
             splits = SG_h5['split'][:]
             image_ids = SG_h5['img_ids'][:].astype('U').tolist()
-            filenames = [os.path.join(args.image_dir, filename+'.jpg')
-                            for filename in image_ids]
+            filenames = [os.path.join(args.image_dir, filename + '.jpg')
+                         for filename in image_ids]
             index = np.arange(splits.shape[0])
             split_indexes = {
                 k: np.array([i for i in range(splits.shape[0])
-                            if splits[i] == v])
+                             if splits[i] == v])
                 for k, v in {'train': 0, 'val': 1, 'test': 2}.items()
             }
 
@@ -231,7 +229,6 @@ class Dataset(torch.utils.data.Dataset):
 
     def keys(self):
         return self.sceneGraphs.keys()
-
 
     @classmethod
     def collate(cls, datas):

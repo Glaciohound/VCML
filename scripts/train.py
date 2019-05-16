@@ -1,36 +1,31 @@
 import sys
 import os
 
-from IPython.core import ultratb
-sys.excepthook = ultratb.FormattedTB(mode='Plain', color_scheme='Linux', call_pdb=1)
-if os.getcwd().endswith('scripts'):
-    sys.path.append('../')
-
-from config import Config, Info
-
-args = Config()
-info = Info()
+from IPython.core import ultratb; sys.excepthook = ultratb.FormattedTB(mode='Plain', color_scheme='Linux', call_pdb=1)
 
 import matplotlib; matplotlib.use('Agg')
-
+import matplotlib.pyplot as plt
 from IPython import embed
 
-import torch
-import torch.nn.functional as F
-
-from dataset import visual_dataset, question_dataset
-from dataset.tools import protocol, dataset_scheduler
-from model.relation_model import RelationModel
-from model.uEmbedding_model import UEmbedding
-from model.hEmbedding_model import HEmbedding
-from model.classification import Classification
-from utils.recording import Recording
-from utils.common import tqdm, contains, equal_ratio, equal_items, recall
-from utils.basic import init_seed, save_log
 import numpy as np
+import torch
+
+from metaconcept.config import Config, Info
+from metaconcept.dataset import visual_dataset, question_dataset
+from metaconcept.dataset.tools import protocol, dataset_scheduler
+from metaconcept.model.hEmbedding_model import HEmbedding
+from metaconcept.model.classification import Classification
+from metaconcept.utils.recording import Recording
+from metaconcept.utils.common import tqdm, contains, equal_ratio, equal_items, recall
+from metaconcept.utils.basic import init_seed, save_log
+
+args = Config()
+info = Info(args)
+
 
 def accuracy_by_type(outputs, data):
     _output = {}
+
     def binary_right(x, y):
         return x * y + (1 - x) * (1 - y)
 
@@ -46,6 +41,7 @@ def accuracy_by_type(outputs, data):
             _output[_type].append((outputs[i].argmax() == data['answer'][i]).cpu().float().sum())
 
     return _output
+
 
 def run_batch(data):
     losses, outputs = info.model(data)
@@ -93,6 +89,7 @@ def val_epoch():
 
     info.pbars[0].write('[VAL]\t%s' % recording.strings()[0][:100])
 
+
 def init():
     if args.random_seed:
         init_seed(args.random_seed)
@@ -101,6 +98,7 @@ def init():
     info.train_recording = Recording(name='train', mode='decaying')
     info.val_recording = Recording(name='val', mode='average')
     info.dataset_scheduler = dataset_scheduler.DatasetScheduler()
+
 
 def run():
     for info.epoch in tqdm(range(1, args.epochs + 1)):
@@ -127,6 +125,7 @@ def run():
                     info.val_recording.history,
                     args.__dict__)
 
+
 def main():
     info.embed = embed
     info.protocol = protocol.Protocol(args.allow_output_protocol, args.protocol_file)
@@ -141,13 +140,10 @@ def main():
                                             question_dataset.Dataset)
     args.names = info.vocabulary.concepts
 
-    if args.model == 'relation_model':
-        info.model = RelationModel()
-    elif args.model == 'u_embedding':
-        info.model = UEmbedding()
-    elif args.model in ['h_embedding_mul', 'h_embedding_add',
-                        'h_embedding_add2']:
+    if args.model in ['h_embedding_mul', 'h_embedding_add', 'h_embedding_add2']:
         info.model = HEmbedding()
+    else:
+        raise ValueError('Unknown model: {}.'.format(args.model))
 
     args.print()
     info.pbars = []
@@ -156,6 +152,7 @@ def main():
     init()
     run()
     embed()
+
 
 if __name__ == '__main__':
     main()
