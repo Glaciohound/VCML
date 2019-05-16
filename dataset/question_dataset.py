@@ -137,7 +137,7 @@ class Dataset(torch.utils.data.Dataset):
         self.mode = mode
 
     def __len__(self):
-        return min(len(self.index), args.max_sizeDataset)
+        return len(self.index)
 
     @property
     def index(self):

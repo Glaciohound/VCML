@@ -93,8 +93,8 @@ class Dataset(torch.utils.data.Dataset):
         elif args.group in ['clevr', 'toy']:
             output = {}
             scene = self.sceneGraphs[index]
-            output['object_lengths'] = len(scene['objects'])
             if 'objects' in scene:
+                output['object_lengths'] = len(scene['objects'])
                 all_concepts = info.vocabulary.concepts
                 object_classes = np.zeros((len(scene['objects']), len(all_concepts)),
                                           dtype=float)

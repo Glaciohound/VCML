@@ -192,7 +192,7 @@ class HEmbedding(nn.Module):
         '''
         conditional_logit = logit_exist(self_logits, submax_logits)
 
-        self.log_logits(logits, self_logits, submax_logits)
+        self.log_logits(logits, self_logits, submax_logits, concept_index)
 
 
         ''' if dealing with a classification task '''
@@ -369,7 +369,6 @@ class HEmbedding(nn.Module):
     ''' Codes for visualizing '''
 
 
-
     def visualize_embedding(self, relation_type=None):
         to_visualize = {}
 
@@ -439,7 +438,7 @@ class HEmbedding(nn.Module):
         plt.close()
         return to_visualize, original, converted
 
-    def log_logits(self, logits, self_logits, submax_logits):
+    def log_logits(self, logits, self_logits, submax_logits, concept_index):
         if 'logit_scatter' not in info.log:
             self.init_logits()
         def to_list(tensor):
@@ -447,10 +446,11 @@ class HEmbedding(nn.Module):
         subargmax = logits.argmax(2)
 
         for i in range(logits.shape[1]):
-            info.log['logit_scatter']['self_logits'][i] += to_list(self_logits[:, i])
-            info.log['logit_scatter']['submax_logit'][i] += to_list(submax_logits[:, i])
-            info.log['logit_scatter']['believed_logit'][i] += to_list(logits[:, i])
-            info.log['logit_scatter']['ref'][i] += to_list(self_logits)
+            index = concept_index[i]
+            info.log['logit_scatter']['self_logits'][index] += to_list(self_logits[:, i])
+            info.log['logit_scatter']['submax_logit'][index] += to_list(submax_logits[:, i])
+            info.log['logit_scatter']['believed_logit'][index] += to_list(logits[:, i])
+            info.log['logit_scatter']['ref'][index] += to_list(self_logits)
 
             for j in range(logits.shape[0]):
                 info.log['match'][i, subargmax[j, i]] += 1

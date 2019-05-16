@@ -45,7 +45,7 @@ def accuracy_by_type(outputs, data):
             _output[_type].append(right / total)
         else:
             _output[_type].append((outputs[i].argmax() ==
-                                   data['answer'][i]).long())
+                                   data['answer'][i]).cpu().float().sum())
 
     return _output
 
@@ -64,7 +64,7 @@ def run_batch(data):
 
     total_accuracy = []
     for v in accuracy.values():
-        total_accuracy += v
+        total_accuracy = total_accuracy + v
     total_accuracy = torch.stack(total_accuracy).mean()
     log = {'loss': loss, 'accuracy': total_accuracy}
 
