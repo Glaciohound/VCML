@@ -25,7 +25,6 @@ class Attribute_Network(nn.Module):
 
     def forward(self, batch):
         features = self.resnet(info.to(batch['image']))
-        output = self.scene_graph(features,
-                                  info.to(batch['objects']),
-                                  info.to(batch['object_lengths']))
+        output = self.scene_graph(features, info.to(batch['objects']), info.to(batch['object_lengths']))
         return features, output
+

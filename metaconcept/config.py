@@ -11,32 +11,46 @@ info = None
 args = None
 
 
+def set_global_info(new_info):
+    global info
+    assert info is None
+    info = new_info
+
+
+def set_global_args(new_args):
+    global args
+    assert args is None
+    args = new_args
+
+
 class Info():
     def __init__(self):
-        global info
-        info = self
-
         self.new_torch = torch.__version__.startswith('1')
-        args = sys.args
-        self.device = torch.device('cuda' if args.use_cuda else 'cpu')\
-            if self.new_torch else\
-            'cuda' if args.use_cuda else 'cpu'
-        self.to = lambda x: (x.to(self.device) if self.new_torch else
-                             x.cuda() if self.device == 'cuda' else
-                             x.cpu())
+        if args.new_torch:
+            self.device = torch.device('cuda' if args.use_cuda else 'cpu')
+        else:
+            self.device = 'cuda' if args.use_cuda else 'cpu'
+
+        set_global_info(self)
+
+    def to(self, x):
+        if self.new_torch:
+            return x.to(self.device)
+
+        return x.cuda() if self.device == 'cuda' else x.cpu()
 
 
 class Config:
-    conceptual_subtasks = ['synonym', 'antonym', 'isinstance']
     def __init__(self):
-        global args
-        args = self
-
         self.dir_args = {}
         self.raw_args = self.parse_args()
 
         self.__dict__.update(vars(self.raw_args))
         self.post_process()
+
+        set_global_args(self)
+
+    conceptual_subtasks = ['synonym', 'antonym', 'isinstance']
 
     def parse_args(self):
         parser = argparse.ArgumentParser()
