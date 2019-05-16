@@ -37,12 +37,24 @@ jac-run train.py --task clevr_pt
 ```
 
 ### isinstance
+pretrained feature version
 ```
 jac-run train.py --task clevr_pt
     --subtasks exist isinstance
     --visualize_relation isinstance
     --val_concepts red blue cube
     --name any_name --silent
+```
+
+detection version
+```
+jac-run train.py --task clevr_dt
+    --subtask filter isinstance
+    --visualize_relation isinstance
+    --val_concepts blue large
+    --feature_dim 256
+    --max_sizeDataset 20000 
+    --name any_name 
 ```
 
 ### isinstance for de-biasing
@@ -132,6 +144,9 @@ test all concepts
 
 `--val_by_classification red blue` when in validation, test classification
 performance on `red` and `blue` rather vqa performance
+
+
+`--max_sizeDataset 20000` for generating 20000 questions in the dataset
 
 
 ### deprecated options

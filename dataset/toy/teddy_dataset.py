@@ -161,17 +161,20 @@ class ToyDataset:
 
     @classmethod
     def classification_task(cls, scene, config):
-        # filter-exist questions
+        # classification
 
         if scene['split'] != 'train' and args.val_by_classification:
             concepts_to_classify = args.val_by_classification
-        else:
+        elif scene['split'] == 'train':
             concepts_to_classify = info.vocabulary.concepts
+        else:
+            return None
+
         question = {
             'question': 'Please classifiy objects in the image on concepts of {}.'
             .format(', '.join(concepts_to_classify)),
             'semantic': [
-                {'operation': 'classification',
+                {'operation': 'classify',
                  'argument': name,
                  'dependencies': []}
                 for name in concepts_to_classify

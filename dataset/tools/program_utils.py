@@ -262,7 +262,7 @@ def semantic2program_u(program_list):
             add_operation('transfer', 'synonym')
             add_operation('transfer', argument)
 
-        elif operation == 'classification':
+        elif operation == 'classify':
             add_operation('classify', argument)
 
         else:
@@ -310,7 +310,7 @@ def semantic2program_h(program_list):
         elif operation == 'exist':
             add_operation('exist', '<NULL>')
 
-        elif operation == 'classification':
+        elif operation == 'classify':
             add_operation('classify', argument)
 
         elif operation == '<NULL>':
