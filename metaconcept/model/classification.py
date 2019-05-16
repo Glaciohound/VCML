@@ -19,7 +19,7 @@ class Classification(nn.Module):
     def __init__(self):
         super(Classification, self).__init__()
         self.feature_mlp = self.build_mlp(args.feature_dim, args.embed_dim, args.hidden_dim)
-        self.resnet_model = ResNetSceneGraph()
+        self.resnet_model = ResNetSceneGraph(relation=False)
 
     def build_mlp(self, dim_in, dim_out, dim_hidden):
         if dim_hidden <= 0:

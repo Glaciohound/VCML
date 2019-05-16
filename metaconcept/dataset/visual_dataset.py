@@ -15,7 +15,6 @@ from metaconcept.dataset.toy import teddy_dataset
 
 
 class Dataset(torch.utils.data.Dataset):
-
     def __init__(self, config):
         cls = Dataset
         self.mode = 'sceneGraph'

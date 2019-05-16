@@ -33,12 +33,12 @@ class HEmbedding(nn.Module):
             self.obj_embed_dim = args.embed_dim
 
         self.attribute_embedding = self.build_embedding(args.max_concepts, args.feature_dim, 'attribute', 0)
-        self.feature_mlp = self.build_mlp(args.feature_dim, self.obj_embed_dim, 'feature', args.hidden_dim)
+        self.feature_mlp = self.build_mlp(args.feature_dim, self.obj_embed_dim, args.hidden_dim)
 
         self.concept_embedding = self.build_embedding(args.max_concepts, args.embed_dim, 'concept', args.hidden_dim)
         self.relation_embedding = self.build_embedding(args.max_concepts, args.embed_dim, 'relation', 0, matrix=self.model=='mul')
 
-        self.resnet_model = ResNetSceneGraph()
+        self.resnet_model = ResNetSceneGraph(relation=False)
         self.register_buffer('true_th', info.to(torch.Tensor([args.true_th])))
         self.register_buffer('same_class_th', info.to(torch.Tensor([args.true_th])))
         self.register_buffer('temperature', info.to(torch.Tensor([args.temperature_init])))
@@ -103,7 +103,7 @@ class HEmbedding(nn.Module):
         program_length = data['program'][0].shape[0]
         processed = dict()
 
-        processed['concept_arguments'] = self.concept_embedding(infoqto(data['program'])[:, :, 1])
+        processed['concept_arguments'] = self.concept_embedding(info.to(data['program'])[:, :, 1])
         processed['relation_arguments'] = self.relation_embedding(info.to(data['program'])[:, :, 1])
         processed['all_concepts'] = info.to(self.concept_embedding(Variable(info.to(torch.arange(args.max_concepts)).long())))
         processed['program_length'] = program_length

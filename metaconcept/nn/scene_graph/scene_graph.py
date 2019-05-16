@@ -24,8 +24,6 @@ from . import functional
 DEBUG = bool(int(os.getenv('DEBUG_SCENE_GRAPH', 0)))
 
 __all__ = ['SceneGraph']
-import sys
-info = sys.info
 
 
 class SceneGraph(nn.Module):
@@ -108,6 +106,8 @@ class SceneGraph(nn.Module):
                     image_h + torch.zeros(box.size(0), 1, dtype=box.dtype, device=box.device)
                 ], dim=-1)
 
+                box_context_imap = functional.generate_intersection_map(box, image_box, self.pool_size)
+
             this_context_features = self.context_roi_pool(context_features, torch.cat([batch_ind, image_box], dim=-1))
             x, y = this_context_features.chunk(2, dim=1)
             this_object_features = self.object_feature_fuse(torch.cat([
@@ -129,7 +129,6 @@ class SceneGraph(nn.Module):
                     rel_batch_ind = i + torch.zeros(union_box.size(0), 1, dtype=box.dtype, device=box.device)
 
                     # intersection maps
-                    box_context_imap = functional.generate_intersection_map(box, image_box, self.pool_size)
                     sub_union_imap = functional.generate_intersection_map(sub_box, union_box, self.pool_size)
                     obj_union_imap = functional.generate_intersection_map(obj_box, union_box, self.pool_size)
 

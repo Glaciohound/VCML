@@ -1,7 +1,7 @@
 import sys
 import os
 
-from IPython.core import ultratb; sys.excepthook = ultratb.FormattedTB(mode='Plain', color_scheme='Linux', call_pdb=1)
+# from IPython.core import ultratb; sys.excepthook = ultratb.FormattedTB(mode='Plain', color_scheme='Linux', call_pdb=1)
 
 import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt

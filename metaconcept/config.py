@@ -12,7 +12,7 @@ class Info(object):
     def __init__(self, args):
         self.new_torch = torch.__version__.startswith('1')
 
-        if args.new_torch:
+        if self.new_torch:
             self.device = torch.device('cuda' if args.use_cuda else 'cpu')
         else:
             self.device = 'cuda' if args.use_cuda else 'cpu'
@@ -124,11 +124,11 @@ class Config(object):
         parser.add_argument('--train_shuffle', action='store_true')
         parser.add_argument('--perfect_th', type=float, default=0.99)
         parser.add_argument('--visualize_dir', type=str, nargs='*',
-                            default='../../data/visualize')
+                            default='../data/visualize')
         parser.add_argument('--log_dir', type=str,
-                            default='../../data/log')
+                            default='../data/log')
         parser.add_argument('--ckpt_dir', type=str,
-                            default='../../data/gqa/checkpoints')
+                            default='../data/gqa/checkpoints')
         parser.add_argument('--visualize_interval', type=int, default=500)
         parser.add_argument('--silent', action='store_true',
                             help='turning off logging, visualizing and saving checkpoints')

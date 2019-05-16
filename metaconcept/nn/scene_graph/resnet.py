@@ -12,8 +12,7 @@ import torch.nn as nn
 import jactorch.nn as jacnn
 import jactorch.models.vision.resnet as resnet
 from .scene_graph import SceneGraph
-import sys
-info = sys.info
+from metaconcept import info
 
 class ResNetSceneGraph(nn.Module):
     def __init__(self):
