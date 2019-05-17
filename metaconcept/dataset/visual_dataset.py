@@ -117,36 +117,39 @@ class Dataset(torch.utils.data.Dataset):
                                             gather=True,
                                             use_special_tokens=False)
 
-        if args.group == 'gqa':
-            sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
-
-        elif args.group == 'clevr':
-            sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
-
-            if args.task.endswith('pt'):
-                sceneGraphs = sceneGraph_port.merge_sceneGraphs(
-                    sceneGraph_port.load_multiple_sceneGraphs(args.feature_sceneGraph_dir),
-                    sceneGraphs,
-                )
-
-        elif args.task == 'toy':
+        if args.task == 'toy':
             sceneGraphs = teddy_dataset.ToyDataset.build_visual_dataset()
+            return sceneGraphs
 
-        else:
-            raise Exception('No such task supported: %s' % args.task)
+        cache_name = args.group + '_' + args.task
+        from jacinle.utils.cache import fs_cached_result
+        @fs_cached_result(f'../cache/sng_{cache_name}.pkl')
+        def get_scene_graph():
+            if args.group == 'gqa':
+                sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
+            elif args.group == 'clevr':
+                sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
+                if args.task.endswith('pt'):
+                    sceneGraphs = sceneGraph_port.merge_sceneGraphs(
+                        sceneGraph_port.load_multiple_sceneGraphs(args.feature_sceneGraph_dir),
+                        sceneGraphs,
+                    )
+            else:
+                raise Exception('No such task supported: %s' % args.task)
+            if args.group == 'gqa' or args.task.endswith('dt'):
+                all_imageNames = image_utils.get_imageNames(args.image_dir)
+                for imageName in all_imageNames:
+                    default_scene = {'image_filename': imageName}
+                    sceneGraph_port.default_scene(default_scene)
+                    image_id = default_scene['image_id']
+                    if not image_id in sceneGraphs:
+                        sceneGraphs[image_id] = default_scene
+                    else:
+                        sceneGraphs[image_id].update(default_scene)
 
-        if args.group == 'gqa' or args.task.endswith('dt'):
-            all_imageNames = image_utils.get_imageNames(args.image_dir)
-            for imageName in all_imageNames:
-                default_scene = {'image_filename': imageName}
-                sceneGraph_port.default_scene(default_scene)
-                image_id = default_scene['image_id']
-                if not image_id in sceneGraphs:
-                    sceneGraphs[image_id] = default_scene
-                else:
-                    sceneGraphs[image_id].update(default_scene)
+            return sceneGraphs
 
-        return sceneGraphs
+        return get_scene_graph()
 
     def split(self):
         self.split_indexes = {key: [k for k, s in self.sceneGraphs.items()

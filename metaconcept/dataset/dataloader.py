@@ -5,7 +5,7 @@ from metaconcept import args
 def get_dataloaders(dataset_kit):
 
     kwargs = {'num_workers': args.num_workers,
-              'collate_fn': dataset_kit['question_dataset'].__class__.collate,
+              'collate_fn': dataset_kit['question_dataset'].collate,
               'drop_last': True,
               'pin_memory': True,
               }

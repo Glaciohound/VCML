@@ -27,30 +27,6 @@ class Dataset(torch.utils.data.Dataset):
         cls.inited = True
         cls.program_utils = program_utils
 
-        cls.collate_setting = {
-            'index': {'type': 'stack', 'tensor': False},
-            'type': {'type': 'stack', 'tensor': False},
-            'question': {'type': 'pad-stack', 'pad_value': info.protocol['words', '<NULL>'],
-                         'tensor': True},
-            'program': {'type': 'pad-stack',
-                        'pad_fn': lambda x, y: (info.protocol['operations', '<NULL>'] if y==0
-                                                else info.protocol['concepts', '<NULL>']),
-                        'tensor': True},
-            'answer': {'type': 'stack', 'tensor': False},
-            'scene_plain': {'type': 'stack', 'tensor': False},
-            'scene': {'type': 'list', 'tensor': True},
-            'image': {'type': 'stack', 'tensor': True},
-            'objects': {'type': 'concat', 'axis': 0, 'tensor': True},
-            'object_lengths': {'type': 'stack', 'tensor': True},
-            'object_classes': {'type': 'list', 'tensor': True},
-            'filter_fn': ('or', (
-                'classification' not in args.subtasks,
-                ('equal_in_length',
-                 ('object_lengths', 'scene_plain', 'scene', 'object_classes')),
-            ))
-        }
-        cls.collate_fn = collate_utils.get_collateFn(cls.collate_setting)
-
     def __getitem__(self, index):
         try:
             return self.__getitem_inner__(index)
@@ -135,9 +111,54 @@ class Dataset(torch.utils.data.Dataset):
     def assertion_checks(self, entry):
         pass
 
-    @classmethod
-    def collate(cls, data):
+    def collate(self, data):
+        if self.mode == 'plain':
+            collate_setting = {
+                'index': {'type': 'stack', 'tensor': False},
+                'type': {'type': 'stack', 'tensor': False},
+                'question': {'type': 'stack', 'tensor': False},
+                'program': {'type': 'stack', 'tensor': False},
+                'answer': {'type': 'stack', 'tensor': False},
+                'scene_plain': {'type': 'stack', 'tensor': False},
+
+                'scene': {'type': 'list', 'tensor': True},
+                'image': {'type': 'stack', 'tensor': True},
+                'objects': {'type': 'concat', 'axis': 0, 'tensor': True},
+                'object_lengths': {'type': 'stack', 'tensor': True},
+                'object_classes': {'type': 'list', 'tensor': True},
+                'filter_fn': ('or', (
+                    'classification' not in args.subtasks,
+                    ('equal_in_length',
+                     ('object_lengths', 'scene_plain', 'scene', 'object_classes')),
+                ))
+            }
+            collate_fn = collate_utils.get_collateFn(collate_setting)
+        else:
+            collate_setting = {
+                'index': {'type': 'stack', 'tensor': False},
+                'type': {'type': 'stack', 'tensor': False},
+                'question': {'type': 'pad-stack', 'pad_value': info.protocol['words', '<NULL>'],
+                             'tensor': True},
+                'program': {'type': 'pad-stack',
+                            'pad_fn': lambda x, y: (info.protocol['operations', '<NULL>'] if y==0
+                                                    else info.protocol['concepts', '<NULL>']),
+                            'tensor': True},
+                'answer': {'type': 'stack', 'tensor': False},
+                'scene_plain': {'type': 'stack', 'tensor': False},
+                'scene': {'type': 'list', 'tensor': True},
+                'image': {'type': 'stack', 'tensor': True},
+                'objects': {'type': 'concat', 'axis': 0, 'tensor': True},
+                'object_lengths': {'type': 'stack', 'tensor': True},
+                'object_classes': {'type': 'list', 'tensor': True},
+                'filter_fn': ('or', (
+                    'classification' not in args.subtasks,
+                    ('equal_in_length',
+                     ('object_lengths', 'scene_plain', 'scene', 'object_classes')),
+                ))
+            }
+            collate_fn = collate_utils.get_collateFn(collate_setting)
+
         if not isinstance(data, list):
             data = [data]
+        return collate_fn(data)
 
-        return cls.collate_fn(data)
