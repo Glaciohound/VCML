@@ -7,7 +7,6 @@ def build_incremental_training_datasets(
 
     dataset_all = []
     for config in args.incremental_training:
-
         visual_dataset = visual_dataset_class(config)
         info.visual_dataset = visual_dataset
         question_dataset = question_dataset_class(visual_dataset, config)
@@ -58,7 +57,8 @@ class DatasetScheduler:
             info.train = this_dataset['train_loader']
             info.val = this_dataset['val_loader']
             info.test = this_dataset['test_loader']
-            self.to_mode('encoded')
+
+            self.to_mode(args.dataset_mode)
 
     def to_mode(self, mode, visual=False):
         this_dataset = info.dataset_all[self.dataset_count]

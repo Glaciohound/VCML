@@ -50,12 +50,14 @@ class Config(object):
             self.dir_args[group].append(arg_name.strip('-'))
             parser.add_argument(arg_name, **kwargs)
 
-        parser.add_argument('--task', default='toy',
-                            choices=['gqa', 'toy', 'clevr_pt', 'clevr_dt'])
-        ''' current model: h_embedding_add2'''
+        parser.add_argument('--task', default='toy', choices=['gqa', 'toy', 'clevr_pt', 'clevr_dt'])
+
+        # current model: h_embedding_add2
         parser.add_argument('--model', default='h_embedding_add2', choices=[
-            'relation_model', 'u_embedding', 'h_embedding_mul', 'h_embedding_add', 'h_embedding_add2'
+            'relation_model', 'u_embedding', 'h_embedding_mul', 'h_embedding_add', 'h_embedding_add2', 'j_embedding'
         ])
+        parser.add_argument('--model_similarity', default='cosine', choices=['cosine', 'tree_cosine'])
+        parser.add_argument('--dataset_mode', default='encoded', choices=['encoded', 'plain'])
 
         ''' dir_add_argument() are for adding relative directories '''
         group = 'gqa'
@@ -130,6 +132,7 @@ class Config(object):
         parser.add_argument('--ckpt_dir', type=str,
                             default='../data/gqa/checkpoints')
         parser.add_argument('--visualize_interval', type=int, default=500)
+        parser.add_argument('--embed', action='store_true', help='enter IPython.embed before training')
         parser.add_argument('--silent', action='store_true',
                             help='turning off logging, visualizing and saving checkpoints')
         parser.add_argument('--visualize_relation', type=str,

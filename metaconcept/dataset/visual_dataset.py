@@ -174,23 +174,29 @@ class Dataset(torch.utils.data.Dataset):
             }
 
         if args.group == 'clevr':
-            sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
+            cache_name = args.group + '_' + args.task
 
-            if args.task.endswith('pt'):
-                sceneGraphs = sceneGraph_port.merge_sceneGraphs(
-                    sceneGraph_port.load_multiple_sceneGraphs(args.feature_sceneGraph_dir),
-                    sceneGraphs,
-                )
+            from jacinle.utils.cache import fs_cached_result
+            @fs_cached_result(f'../cache/sng_{cache_name}.pkl')
+            def get_scene_graph():
+                sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
 
-            if args.task.endswith('dt'):
-                all_imageNames = image_utils.get_imageNames(args.image_dir)
-                for imageName in all_imageNames:
-                    image_id, default_scene = sceneGraph_port.default_scene(imageName)
-                    if not image_id in sceneGraphs:
-                        sceneGraphs[image_id] = default_scene
-                    else:
-                        sceneGraphs[image_id].update(default_scene)
+                if args.task.endswith('pt'):
+                    sceneGraphs = sceneGraph_port.merge_sceneGraphs(
+                        sceneGraph_port.load_multiple_sceneGraphs(args.feature_sceneGraph_dir),
+                        sceneGraphs,
+                    )
 
+                if args.task.endswith('dt'):
+                    all_imageNames = image_utils.get_imageNames(args.image_dir)
+                    for imageName in all_imageNames:
+                        image_id, default_scene = sceneGraph_port.default_scene(imageName)
+                        if not image_id in sceneGraphs:
+                            sceneGraphs[image_id] = default_scene
+                        else:
+                            sceneGraphs[image_id].update(default_scene)
+                return sceneGraphs
+            sceneGraphs = get_scene_graph()
 
         elif args.task == 'toy':
             sceneGraphs = teddy_dataset.ToyDataset.build_visual_dataset()

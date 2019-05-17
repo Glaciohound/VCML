@@ -1,23 +1,26 @@
 #!/usr/bin/env python
 # coding=utf-8
 
+import os
+import pprint
+from copy import deepcopy
+
+import numpy as np
+import matplotlib.pyplot as plt
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
 import torch.nn.init as init
-from torch.autograd import Variable
-import os
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from copy import deepcopy
-import matplotlib.pyplot as plt
-import numpy as np
+
+import jactorch
 
 from metaconcept import info, args
 from metaconcept.nn.scene_graph import ResNetSceneGraph
 from metaconcept.utils.common import to_numpy, to_normalized, min_fn, matmul, to_tensor, vistb, arange, logit_exist, log_or, logit_xand
-import pprint
 
 
 class HEmbedding(nn.Module):
@@ -48,14 +51,21 @@ class HEmbedding(nn.Module):
     def scale(self, tensor):
         return self.temperature * (tensor - self.true_th)
 
-    def similarity(self, a, b, *args, **kwargs):
-        return F.cosine_similarity(a, b, *args, **kwargs)
+    def similarity(self, a, b, dim=-1):
+        if args.model_similarity == 'cosine':
+            return F.cosine_similarity(a, b, dim=dim)
+        elif args.model_similarity == 'tree_cosine':
+            """return b is an instance of a"""
+            a, b = jactorch.normalize(a, dim=dim), jactorch.normalize(b, dim=dim)
+            return (a * torch.max(b - a, 0)).sum(dim=dim)
+        else:
+            raise NotImplementedError(f'Unknown model similarity function: {args.model_similarity}.')
 
-    def logit_fn(self, *arg, threshold=None, **kwarg):
+    def logit_fn(self, a, b, threshold=None, dim=-1):
         """logit function taking into (x, y) and compute the logit for the similarity probability between them."""
-        if not threshold:
+        if threshold is None:
             threshold = self.true_th
-        return self.temperature * (self.similarity(*arg, **kwarg) - threshold)
+        return self.temperature * (self.similarity(a, b, dim=-1) - threshold)
 
     def build_mlp(self, dim_in, dim_out, dim_hidden):
         if dim_hidden <= 0:
@@ -105,7 +115,7 @@ class HEmbedding(nn.Module):
 
         processed['concept_arguments'] = self.concept_embedding(info.to(data['program'])[:, :, 1])
         processed['relation_arguments'] = self.relation_embedding(info.to(data['program'])[:, :, 1])
-        processed['all_concepts'] = info.to(self.concept_embedding(Variable(info.to(torch.arange(args.max_concepts)).long())))
+        processed['all_concepts'] = info.to(self.concept_embedding(info.to(torch.arange(args.max_concepts).long())))
         processed['program_length'] = program_length
 
         def load_list(k):
@@ -192,7 +202,7 @@ class HEmbedding(nn.Module):
             num_objects = data['object_lengths'][i]
 
         ''' initializing attentions '''
-        init_attention = lambda n: Variable(info.to(torch.ones(n))) * self.inf
+        init_attention = lambda n: info.to(torch.ones(n)) * self.inf
         attention = {'concepts': init_attention(args.max_concepts),
                      'objects': init_attention(num_objects)}
         def attention_copy(attention_):
@@ -288,8 +298,10 @@ class HEmbedding(nn.Module):
                     matrix = processed['relation_arguments'][i, j]
                     transferred = torch.matmul(gather, matrix)
                     to_compare = torch.matmul(to_compare, matrix)
-                    _output = self.scale(self.similarity(to_compare, transferred[None])-
-                                        self.similarity(all_concepts, transferred[None]))
+                    _output = self.scale(
+                            self.similarity(to_compare, transferred[None]) -
+                            self.similarity(all_concepts, transferred[None])
+                    )
 
                 elif self.model == 'add':
                     transferred = gather + processed['relation_arguments'][i, j]
@@ -330,14 +342,14 @@ class HEmbedding(nn.Module):
             x = info.to(x)
 
         x = x+1
-        return self.attribute_embedding(Variable(x)).sum(-2)
+        return self.attribute_embedding(x).sum(-2)
 
     def get_embedding(self, name, relational=False):
         embedding = self.concept_embedding\
             if not relational\
             else self.relation_embedding
-        return embedding(Variable(info.to(to_tensor([
-            info.protocol['concepts', name]]))))[0]
+        return embedding(info.to(to_tensor([
+            info.protocol['concepts', name]])))[0]
 
     # Codes for visualizing
 
