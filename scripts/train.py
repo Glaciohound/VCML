@@ -121,9 +121,12 @@ def run():
 
         if not args.silent:
             info.model.save(args.name)
-            save_log(os.path.join(args.log_dir, args.name+'.pkl'),
+            save_log(os.path.join(args.log_dir, args.name),
                     info.val_recording.history,
                     args.__dict__)
+            info.dataset_scheduler.save(
+                os.path.join(args.ckpt_dir, args.name+'_datasets')
+            )
 
 
 def main():
@@ -140,10 +143,12 @@ def main():
                                             question_dataset.Dataset)
     args.names = info.vocabulary.concepts
 
+    print('Building model ... ', end='', flush=True)
     if args.model in ['h_embedding_mul', 'h_embedding_add', 'h_embedding_add2']:
         info.model = HEmbedding()
     else:
         raise ValueError('Unknown model: {}.'.format(args.model))
+    print('DONE')
 
     args.print()
     info.pbars = []

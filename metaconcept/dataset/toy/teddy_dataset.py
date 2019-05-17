@@ -112,9 +112,9 @@ class ToyDataset:
         args.task_concepts[config] = task_concepts
 
         selected_ids = np.random.choice(list(visual_dataset.keys()), args.max_sizeDataset)
-        print('building question dataset')
         cls.conceptualQuestion_counter = {'synonym': 0, 'isinstance': 0, 'bin_isinstance': 0}
 
+        print('Building question dataset ...')
         for scene_id in tqdm(selected_ids):
             scene = visual_dataset[scene_id]['scene_plain']
             if 'objects' not in scene:

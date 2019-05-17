@@ -6,7 +6,7 @@ special_tokens = {
 }
 import numpy as np
 from . import program_utils
-from metaconcept import info
+from metaconcept import info, args
 
 
 def build_tokenMap(obj, vocabulary, add_special_tokens=False):
@@ -72,5 +72,8 @@ def register_concepts(questions):
 
         encode_question(q['question'])
         info.protocol['concepts', q['answer']]
+
+    args.max_concepts = max(args.max_concepts,
+                            len(info.protocol['concepts']))
 
     return info.protocol['metaconcepts']

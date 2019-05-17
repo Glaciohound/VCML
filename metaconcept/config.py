@@ -166,8 +166,6 @@ class Config(object):
         parser.add_argument('--size_attention', type=int, default=30)
         parser.add_argument('--identity_only', action='store_true')
         parser.add_argument('--identity_dim', type=int, default=50)
-        parser.add_argument('--question_filter', default='None',
-                            choices=['None', 'existance'])
 
         return parser.parse_args()
 

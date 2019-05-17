@@ -1,5 +1,6 @@
 from metaconcept import args, info
 from metaconcept.dataset.dataloader import get_dataloaders
+import pickle
 
 
 def build_incremental_training_datasets(
@@ -74,3 +75,12 @@ class DatasetScheduler:
     @property
     def config(self):
         return args.incremental_training[self.dataset_count]
+
+    def save(self, filename):
+        _output = [{
+            'sceneGraphs': dataset_kit['visual_dataset'].sceneGraphs,
+            'questions': dataset_kit['question_dataset'].questions}
+            for dataset_kit in info.dataset_all
+        ]
+        with open(filename+'.pkl', 'wb') as f:
+            pickle.dump(_output, f)

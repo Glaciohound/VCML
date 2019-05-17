@@ -29,9 +29,6 @@ def load_sceneGraphs(filename):
         if isinstance(scene['objects'], list):
             scene['objects'] =\
                 {str(i): obj for i, obj in enumerate(scene['objects'])}
-        for obj in scene['objects'].values():
-            if 'attributes' in obj and 'name' in obj:
-                obj['attributes'].append(obj['name'])
         sceneGraphs[scene['image_id']] = scene
 
     return sceneGraphs
@@ -44,6 +41,11 @@ def register_vocabulary(sceneGraphs):
                 for cat, attr in obj.items():
                     if isinstance(attr, str):
                         info.vocabulary[cat, attr]
+                        info.protocol['concepts', attr]
+                    if cat == 'attributes':
+                        for at in attr:
+                            info.vocabulary[cat, at]
+                            info.protocol['concepts', at]
 
 
 def merge_sceneGraphs(x, y):

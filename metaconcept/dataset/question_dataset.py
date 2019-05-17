@@ -88,22 +88,18 @@ class Dataset(torch.utils.data.Dataset):
         return entry
 
     def load_questions(self, visual_dataset, config):
-        if args.group in ['toy', 'clevr']:
-            self.questions = teddy_dataset.ToyDataset.build_question_dataset(visual_dataset, config)
-        elif args.group == 'gqa':
+        if args.subtasks == ['original']:
+            print('Loading questions ... ', end='', flush=True)
             with open(args.questions_json, 'r') as f:
                 questions = json.load(f)
-            filtered = []
-            for k, q in questions.items():
-                if question_utils.filter_questions(q, args.question_filter):
-                    filtered.append(k)
-            questions = {k: questions[k] for k in filtered}
             for q_id, question in questions.items():
-                question['id'] = q_id
-            self.questions = list(questions.values())
+                questions['id'] = q_id
+            print('DONE')
+        else:
+            self.questions = teddy_dataset.ToyDataset.build_question_dataset(visual_dataset, config)
 
         self.split_indexes = {key: [q_id for q_id, q in self.questions.items()
-                                    if q['split']==key]
+                                    if q['split'] == key]
                                 for key in ['train', 'test', 'val']}
         self.split_indexes['total'] = list(self.questions.keys())
         self.types = set(q['type'] for q in self.questions.values()
