@@ -89,3 +89,12 @@ class Recording:
     def strings(self):
         return (', '.join(['%s:%.4f' % (k, v) for k, v in self.data.items()]),
                 ', '.join(['%s:%.3f' % (k[0] + k[-1], v) for k, v in self.data.items()]))
+
+    def format_string(self, start, sep=',', max_depth=None):
+        if max_depth is None:
+            string = sep.join(['%s=%.4f' % (k, v) for k, v in sorted(self.data.items())])
+        else:
+            string = sep.join(['%s=%.4f' % (k, v) for k, v in sorted(self.data.items()) if k.count('.') < max_depth])
+
+        return start + string
+

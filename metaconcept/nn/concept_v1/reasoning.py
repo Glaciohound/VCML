@@ -10,20 +10,20 @@
 
 import torch
 import torch.nn as nn
+import jactorch
 
 
 class ProgramExecutor(nn.Module):
-    def __init__(self, scene, concept_embeddings, training):
+    def __init__(self, concept_embeddings, training):
         super().__init__()
-        self.scene = scene
         self.concept_embeddings = concept_embeddings
         self.training = training
 
-    def forward(self, program):
+    def forward(self, scene_graph, program):
         stack = list()
         buffer = list()
 
-        object_features = self.scene[1]
+        object_features = scene_graph[1]
         nr_objects = object_features.size(0)
 
         for pblock in program:
@@ -44,7 +44,8 @@ class ProgramExecutor(nn.Module):
                     self.concept_embeddings.infer_metaconcept('object_classify', object_features, concept)
                 ))
             elif op == 'exist':
-                v = stack.pop().max(dim=0)[0] * 0.5
+                # v = stack.pop().max(dim=0)[0] * 0.5
+                v = jactorch.logsumexp(stack.pop(), dim=0) * 0.5
                 stack.append((
                     torch.stack([v, -v], dim=0),
                     {'yes': 0, 'no': 1},

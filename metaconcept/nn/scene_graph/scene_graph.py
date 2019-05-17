@@ -53,21 +53,20 @@ class SceneGraph(nn.Module):
 
             self.reset_parameters()
         else:
-            assert self.relation, 'Cannot enable debuging mode with relation=False.'
-
             def gen_replicate(n):
                 def rep(x):
                     return torch.cat([x for _ in range(n)], dim=1)
                 return rep
 
+            self.downsample_rate = 1
             self.pool_size = 32
-            self.object_roi_pool = jacnn.PrRoIPool2D(32, 32, 1.0 / downsample_rate)
-            self.context_roi_pool = jacnn.PrRoIPool2D(32, 32, 1.0 / downsample_rate)
+            self.object_roi_pool = jacnn.PrRoIPool2D(self.pool_size, self.pool_size, 1.0 / self.downsample_rate)
+            self.context_roi_pool = jacnn.PrRoIPool2D(self.pool_size, self.pool_size, 1.0 / self.downsample_rate)
             self.context_feature_extract = gen_replicate(2)
             self.object_feature_fuse = jacnn.Identity()
 
             if self.relation:
-                self.relation_roi_pool = jacnn.PrRoIPool2D(32, 32, 1.0 / downsample_rate)
+                self.relation_roi_pool = jacnn.PrRoIPool2D(self.pool_size, self.pool_size, 1.0 / self.downsample_rate)
                 self.relation_feature_extract = gen_replicate(3)
                 self.relation_feature_fuse = jacnn.Identity()
 

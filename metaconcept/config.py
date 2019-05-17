@@ -103,6 +103,7 @@ class Config(object):
         parser.add_argument('--incremental_training', nargs='+', required=False, choices=['full', 'partial', 'replaced'],
                 default=['full'],
                 help='partial for no asking particular conceptsreplaced for using a synonym as a substitute in tasks')
+        parser.add_argument('--curriculum_training', type=int, default=0)
         parser.add_argument('--val_concepts', nargs='+', required=False,
                             help='concepts for validation')
         parser.add_argument('--val_by_classification', nargs='+', type=str,

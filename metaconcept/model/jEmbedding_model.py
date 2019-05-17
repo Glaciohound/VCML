@@ -30,8 +30,9 @@ import jactorch.nn as jacnn
 
 from metaconcept import info, args
 from metaconcept.nn.scene_graph import ResNetSceneGraph
-from metaconcept.nn.concept.embeddings_v1 import ConceptEmbedding
-from metaconcept.nn.concept.reasoning import ProgramExecutor
+from metaconcept.nn.concept_v1.embeddings import ConceptEmbedding
+from metaconcept.nn.concept_v1.reasoning import ProgramExecutor
+from metaconcept.nn.concept_v1.concept_eval import ConceptEvaluation
 from metaconcept.utils.common import to_numpy, to_normalized, min_fn, matmul, to_tensor, vistb, arange, logit_exist, log_or, logit_xand
 
 
@@ -59,12 +60,16 @@ class JEmbedding(nn.Module):
 
         monitors, outputs = defaultdict(list), defaultdict(list)
 
-        features, scene_graph = self.resnet_model(data)
+        features, scene_graphs = self.resnet_model(data)
+        scene_graphs = [
+            [None, self.object_feature(sg[1]), None]
+            for sg in scene_graphs
+        ]
+
         for i in range(batch_size):
-            sg = scene_graph[i]
-            sg = [None, self.object_feature(sg[1]), None]
-            executor = ProgramExecutor(sg, self.concept_embeddings, self.training)
-            buffer, answer = executor(data['program'][i])
+            sg = scene_graphs[i]
+            executor = ProgramExecutor(self.concept_embeddings, self.training)
+            buffer, answer = executor(sg, data['program'][i])
 
             logits, word2idx, idx2word = answer
             assert logits.dim() == 1
@@ -92,25 +97,30 @@ class JEmbedding(nn.Module):
 
             outputs['answer'] = idx2word[pred]
 
+        concept_eval = ConceptEvaluation(self.concept_embeddings, self.training)
+        monitors.update(concept_eval(scene_graphs, data['object_classes']))
+
         canonize_monitors(monitors)
 
         if self.training:
-            return monitors['loss.qa'], monitors, outputs
+            monitors['loss'] = monitors['loss.qa'] + monitors['loss.concept']
+            monitors['acc'] = monitors['acc.qa']
+            return monitors['loss'], monitors, outputs
         else:
             return None, monitors, outputs
 
     def init(self):
-        inited = []
-        for name, param in self.named_parameters():
-            if not name.startswith('resnet_model'):
-                inited.append(name)
-                if info.new_torch:
-                    init.normal_(param, 0, args.init_variance)
-                else:
-                    init.normal(param, 0, args.init_variance)
+        # inited = []
+        # for name, param in self.named_parameters():
+        #     if not name.startswith('resnet_model'):
+        #         inited.append(name)
+        #         if info.new_torch:
+        #             init.normal_(param, 0, args.init_variance)
+        #         else:
+        #             init.normal(param, 0, args.init_variance)
 
-        print('initalized parameters:', end='')
-        jacinle.stprint(inited)
+        # print('initalized parameters:', end='')
+        # jacinle.stprint(inited)
         self.new_optimizer()
 
     def new_optimizer(self):
