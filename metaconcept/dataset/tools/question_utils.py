@@ -5,6 +5,8 @@ special_tokens = {
     '<UNK>': 3,
 }
 import numpy as np
+from . import program_utils
+from metaconcept import info
 
 
 def build_tokenMap(obj, vocabulary, add_special_tokens=False):
@@ -39,12 +41,12 @@ def tokenize(s, delim=' ',
     return tokens
 
 
-def encode_question(question, protocol, allow_unk=False):
+def encode_question(question, allow_unk=False):
     seq_tokens = tokenize(question, punct_to_keep=[';', ',', '?', '.'])
     seq_idx = []
     for token in seq_tokens:
         seq_idx.append(token)
-    seq_idx = [protocol['words', x] for x in seq_idx]
+    seq_idx = [info.protocol['words', x] for x in seq_idx]
     return np.array(seq_idx)
 
 
@@ -56,3 +58,19 @@ def filter_questions(question, mode):
             if op['operation'] not in ['exist', 'select']:
                 return False
     return True
+
+def register_concepts(questions):
+    if isinstance(questions, dict):
+        questions = questions.values()
+
+    for q in questions:
+        for op in program_utils.semantic2program_h(q['semantic']):
+            info.protocol['operations', op['operation']]
+            info.protocol['concepts', op['argument']]
+            if op['operation'].startswith('transfer'):
+                info.protocol['metaconcepts', op['argument']]
+
+        encode_question(q['question'])
+        info.protocol['concepts', q['answer']]
+
+    return info.protocol['metaconcepts']

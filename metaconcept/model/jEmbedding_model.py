@@ -74,28 +74,28 @@ class JEmbedding(nn.Module):
                 qa_type = 'conceptual' if data['type'][i] in args.conceptual_subtasks else 'visual'
 
                 acc = float(pred == word2idx[data['answer'][i]])
-                monitors['acc/qa'].append(acc)
-                monitors['acc/qa/' + qa_type].append(acc)
-                monitors['acc/qa/' + qa_type + '/' + data['type'][i]].append(acc)
+                monitors['acc.qa'].append(acc)
+                monitors['acc.qa.' + qa_type].append(acc)
+                monitors['acc.qa.' + qa_type + '.' + data['type'][i]].append(acc)
 
                 if self.training:
                     log_softmax = F.log_softmax(logits, dim=-1)
                     loss = -log_softmax[word2idx[data['answer'][i]]]
 
                     if qa_type == 'conceptual':
-                        monitors['loss/qa'].append(loss * args.conceptual_weight)
+                        monitors['loss.qa'].append(loss * args.conceptual_weight)
                     else:
-                        monitors['loss/qa'].append(loss)
+                        monitors['loss.qa'].append(loss)
 
-                    monitors['loss/qa/' + qa_type].append(loss)
-                    monitors['loss/qa/' + qa_type + '/' + data['type'][i]].append(loss)
+                    monitors['loss.qa.' + qa_type].append(loss)
+                    monitors['loss.qa.' + qa_type + '.' + data['type'][i]].append(loss)
 
             outputs['answer'] = idx2word[pred]
 
         canonize_monitors(monitors)
 
         if self.training:
-            return monitors['loss/qa'], monitors, outputs
+            return monitors['loss.qa'], monitors, outputs
         else:
             return None, monitors, outputs
 

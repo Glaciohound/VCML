@@ -162,10 +162,8 @@ class ToyDataset:
 
         if scene['split'] != 'train' and args.val_by_classification:
             concepts_to_classify = args.val_by_classification
-        elif scene['split'] == 'train':
-            concepts_to_classify = info.vocabulary.concepts
         else:
-            return None
+            concepts_to_classify = info.vocabulary.concepts
 
         question = {
             'question': 'Please classifiy objects in the image on concepts of {}.'

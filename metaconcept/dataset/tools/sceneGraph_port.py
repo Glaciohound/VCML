@@ -4,7 +4,7 @@ import pickle
 from glob import glob
 from functools import reduce
 from metaconcept import info, args
-from metaconcept.utils.common import union, pick_one, get_imageId
+from metaconcept.utils.common import union, get_imageId
 from collections import Counter
 
 
@@ -19,19 +19,20 @@ def load_sceneGraphs(filename):
     if 'scenes' in loaded:
         loaded = loaded['scenes']
     if isinstance(loaded, dict):
+        for image_id, scene in loaded.items():
+            scene['image_id'] = image_id
         loaded = list(loaded.values())
 
     sceneGraphs = {}
     for scene in loaded:
-        image_id, default = default_scene(scene['image_filename'])
-        scene.update(default)
-        for k, v in scene.items():
-            if k != 'objects':
-                scene[k] = v
-            else:
-                scene['objects'] = \
-                    {str(i): obj for i, obj in enumerate(scene['objects'])}
-        sceneGraphs[image_id] = scene
+        default_scene(scene, filename)
+        if isinstance(scene['objects'], list):
+            scene['objects'] =\
+                {str(i): obj for i, obj in enumerate(scene['objects'])}
+        for obj in scene['objects'].values():
+            if 'attributes' in obj and 'name' in obj:
+                obj['attributes'].append(obj['name'])
+        sceneGraphs[scene['image_id']] = scene
 
     return sceneGraphs
 
@@ -69,15 +70,17 @@ def load_multiple_sceneGraphs(path):
                   [load_sceneGraphs(filename) for filename in all_files])
 
 
-def default_scene(filename):
-    image_id = get_imageId(filename)
-    scene = {'image_id': image_id,
-             'image_filename': os.path.join(args.root_dir, filename)}
+def default_scene(scene, sceneGraph_file=''):
+    if 'image_id' not in scene:
+        image_id = get_imageId(scene['image_filename'])
+        scene['image_id'] = image_id
+    else:
+        image_id = scene['image_id']
+
     if 'split' not in scene:
         for split in ['train', 'test', 'val']:
-            if split in image_id:
+            if split in image_id or split in sceneGraph_file:
                 scene['split'] = split
-    return (image_id, scene)
 
 
 def filter_sceneGraphs(sceneGraphs, filter_fn, inplace=False):

@@ -19,7 +19,6 @@ class Dataset(torch.utils.data.Dataset):
         self.split = 'total'
         self.init()
         self.load_questions(visual_dataset, config)
-        self.register_protocol()
 
     @classmethod
     def init(cls):
@@ -87,6 +86,8 @@ class Dataset(torch.utils.data.Dataset):
                         if 'type' in q)
         self.answers = set(q['answer'] for q in self.questions.values())
 
+        question_utils.register_concepts(self.questions)
+
     def to_split(self, split):
         new_dataset = copy.copy(self)
         new_dataset.split = split
@@ -103,13 +104,6 @@ class Dataset(torch.utils.data.Dataset):
         train, val, test = [main_dataset.to_split(s)
                             for s in ['train', 'val', 'test']]
         return train, val, test
-
-    def register_protocol(self):
-        mode = self.mode
-        self.mode == 'encoded'
-        for i in range(len(self)):
-            self[i]
-        self.mode = mode
 
     def __len__(self):
         return len(self.index)
