@@ -35,9 +35,8 @@ class Dataset(torch.utils.data.Dataset):
             raise exc
 
     def __getitem_inner__(self, index_):
-        if isinstance(index_, str):
-            index_ = self.index.index(index_)
-        index = self.index[index_]
+        if isinstance(index_, int):
+            index = self.index[index_]
 
         question = self.questions[index]
         program_translator = program_utils.semantic2program_r if args.model == 'relation_model'\

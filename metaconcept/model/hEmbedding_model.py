@@ -160,21 +160,23 @@ class HEmbedding(nn.Module):
             all_concepts = torch.cat([all_concepts[:, :self.obj_embed_dim], to_normalized(all_concepts[:, self.obj_embed_dim:])], dim=1)
 
         ''' pre-processing: calculating all obj-feasible-concept logits '''
-        concept_names = info.vocabulary.concepts
-        concept_index = [info.protocol['concepts', name] for name in concept_names]
-        operators = all_concepts[concept_index, :self.obj_embed_dim]
-        latters = all_concepts[concept_index, self.obj_embed_dim:]
-        projected = objects[:, None] + operators[None, :]
+        operators = all_concepts[:, :self.obj_embed_dim]
+        latters = all_concepts[:, self.obj_embed_dim:]
+        projected = objects[:, None] + operators[None]
         projected = to_normalized(projected)
 
         ''' logits[i, j, k] = <obj_i + operator_j, concept_k> '''
-        logits = torch.matmul(projected[:, :, None], latters.transpose(0, 1))[:, :, 0]
-        ''' self_logits[i, j] = <obj_i, operator_j, concept_j> '''
-        self_logits = torch.diagonal(logits, dim1=1, dim2=2)
+        program_index = data['program'][i, :, 1]
+        projected_used = torch.index_select(projected, 1, info.to(program_index))
+        logits = torch.matmul(projected_used[:, :, None], latters.transpose(0, 1))[:, :, 0]
+        ''' self_logits[i, j] = <obj_i + operator_j, concept_j> '''
+        self_logits = (projected * latters[None]).sum(2)
+
         other_logits = min_fn(self_logits[:, None, :], logits)
-        diag_mask = info.to(torch.eye(logits.shape[1]))[None]
+        diag_mask = info.to(torch.eye(logits.shape[2])[program_index])[None]
         other_logits = other_logits - (other_logits + self.inf) * diag_mask
         submax_logits, subargmax = other_logits.max(2)
+        self_logits = self_logits[:, program_index]
         '''
         conditinal probability:
             Pr(concept_i <- obj_j | ∃ concept_i'~concept_i, s.t. concept_i' <- obj_j)
@@ -182,19 +184,18 @@ class HEmbedding(nn.Module):
         conditional_logit = logit_exist(self_logits, submax_logits)
 
         if not args.silent:
-            self.log_logits(logits, self_logits, submax_logits, concept_index)
+            self.log_logits(logits, self_logits, submax_logits)
 
 
         ''' if dealing with a classification task '''
         if data['type'][i] == 'classification':
-            to_classify = data['program'][i, :, 1].tolist()
-            to_classify = [concept_index.index(_index) for _index in to_classify]
+            to_classify = [info.concept_indexes[_index] for _index in program_index]
 
             binary_loss = F.binary_cross_entropy_with_logits(
-                conditional_logit, processed['object_classes'][i], reduction='none')
-            losses[i] = binary_loss[:, to_classify].mean()
-            outputs[i] = conditional_logit[:, to_classify]
-            data['object_classes'][i] = data['object_classes'][i][:, to_classify]
+                conditional_logit, processed['object_classes'][i][:, to_classify], reduction='none')
+            losses[i] = binary_loss.mean()
+            outputs[i] = conditional_logit
+            #data['object_classes'][i] = data['object_classes'][i][:, to_classify]
             return
 
 
@@ -213,17 +214,16 @@ class HEmbedding(nn.Module):
             return {k: v * 1 for k, v in attention_.items()}
 
         ''' operation[Filter] '''
-        def filter_op(attention_, concept_, arg_i):
+        def filter_op(attention_, concept_, index_j):
             _output = {}
 
             ''' if h_embedding_add2 model: '''
             if self.model == 'add2':
-                index = concept_index.index(arg_i)
 
                 _output['concepts'] = min_fn(attention_['concepts'], self.logit_fn(
                   all_concepts, concept_[None]))
                 _output['objects'] = min_fn(attention_['objects'],
-                                            conditional_logit[:, index])
+                                            conditional_logit[:, index_j])
 
                 ''' unused as in default args.penalty == 0 '''
                 sanity_loss = info.to(torch.tensor(0.))\
@@ -259,13 +259,11 @@ class HEmbedding(nn.Module):
                     raise Exception('unsupported select argument')
 
             elif op_s == 'filter':
-                attention, exist_loss = filter_op(attention, processed['concept_arguments'][i, j],
-                                                  data['program'][i, j, 1])
+                attention, exist_loss = filter_op(attention, processed['concept_arguments'][i, j], j)
                 penalty_loss = penalty_loss + exist_loss
 
             elif op_s == 'verify':
-                attention, exist_loss = filter_op(attention, processed['concept_arguments'][i, j],
-                                                  data['program'][i, j, 1])
+                attention, exist_loss = filter_op(attention, processed['concept_arguments'][i, j], j)
                 penalty_loss = penalty_loss + exist_loss
                 attention['concepts'][torch.arange(args.max_concepts).long() != arg] =\
                     -self.inf
@@ -428,7 +426,7 @@ class HEmbedding(nn.Module):
         plt.close()
         return to_visualize, original, converted
 
-    def log_logits(self, logits, self_logits, submax_logits, concept_index):
+    def log_logits(self, logits, self_logits, submax_logits):
         if 'logit_scatter' not in info.log:
             self.init_logits()
         def to_list(tensor):
@@ -436,7 +434,7 @@ class HEmbedding(nn.Module):
         subargmax = logits.argmax(2)
 
         for i in range(logits.shape[1]):
-            index = concept_index[i]
+            index = info.concept_indexes.index(i)
             info.log['logit_scatter']['self_logits'][index] += to_list(self_logits[:, i])
             info.log['logit_scatter']['submax_logit'][index] += to_list(submax_logits[:, i])
             info.log['logit_scatter']['believed_logit'][index] += to_list(logits[:, i])

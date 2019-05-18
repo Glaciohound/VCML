@@ -10,7 +10,7 @@ from metaconcept import info, args
 from tqdm import tqdm
 
 
-def build_tokenMap(obj, vocabulary, add_special_tokens=False):
+def build_tokenMap(obj, vocabulary, add_special_tokens=True):
     tokenMap = {}
     if add_special_tokens:
         for l in vocabulary.values():
@@ -67,6 +67,7 @@ def register_concepts(questions):
     operations = set()
     concepts = set(info.vocabulary.concepts)
     metaconcepts = set()
+    answers = set(['yes', 'no'])
 
     for q in tqdm(questions):
         if q['type'] == 'classification':
@@ -78,7 +79,6 @@ def register_concepts(questions):
                 metaconcepts.add(op['argument'])
 
         encode_question(q['question'])
-        concepts.add(q['answer'])
 
     for _op in operations:
         info.protocol['operations', _op]
@@ -86,8 +86,14 @@ def register_concepts(questions):
         info.protocol['concepts', _concept]
     for _meta in metaconcepts:
         info.protocol['metaconcepts', _meta]
+    for _ans in answers:
+        info.protocol['answers', _ans]
 
     args.max_concepts = max(args.max_concepts,
                             len(info.protocol['concepts']))
 
-    return info.protocol['metaconcepts']
+    all_concepts = info.vocabulary.concepts
+    info.concept_indexes = [
+        -1 for i in range(len(info.protocol['concepts']))]
+    for i, name in enumerate(all_concepts):
+        info.concept_indexes[info.protocol['concepts', name]] = i

@@ -63,7 +63,7 @@ class Dataset(torch.utils.data.Dataset):
             raise exc
 
     def __getitem_inner__(self, index):
-        if not isinstance(index, str):
+        if isinstance(index, int):
             index = self.index[index]
 
         output = {}
