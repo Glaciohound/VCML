@@ -103,13 +103,6 @@ def init():
 def run():
     for info.epoch in tqdm(range(1, args.epochs + 1)):
 
-        if args.visualize_dir and not args.silent:
-            if not isinstance(info.model, Classification):
-                info.model.visualize_embedding(args.visualize_relation)
-                info.model.visualize_logit()
-            info.train_recording.visualize()
-            info.val_recording.visualize()
-
         train_epoch()
         if not args.no_validation:
             val_epoch()
@@ -120,6 +113,12 @@ def run():
         info.val_recording.clear()
 
         if not args.silent:
+            if not isinstance(info.model, Classification):
+                info.model.visualize_embedding(args.visualize_relation)
+                info.model.visualize_logit()
+            info.train_recording.visualize()
+            info.val_recording.visualize()
+
             info.model.save(args.name)
             save_log(os.path.join(args.log_dir, args.name),
                     info.val_recording.history,

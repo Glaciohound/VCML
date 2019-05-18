@@ -153,6 +153,7 @@ class HEmbedding(nn.Module):
             object_input = processed['recognized'][i][1]
         objects = self.feature_mlp(object_input)
         objects = to_normalized(objects)
+        n_objects = objects.shape[0]
 
         all_concepts = processed['all_concepts']
         if self.model == 'add2':
@@ -164,13 +165,15 @@ class HEmbedding(nn.Module):
         operators = all_concepts[concept_index, :self.obj_embed_dim]
         latters = all_concepts[concept_index, self.obj_embed_dim:]
         projected = objects[:, None] + operators[None, :]
+        projected = to_normalized(projected)
 
         ''' logits[i, j, k] = <obj_i + operator_j, concept_k> '''
-        logits = self.logit_fn(projected[:, :, None], latters[None, None], dim=3)
+        logits = torch.matmul(projected[:, :, None], latters.transpose(0, 1))[:, :, 0]
         ''' self_logits[i, j] = <obj_i, operator_j, concept_j> '''
         self_logits = torch.diagonal(logits, dim1=1, dim2=2)
         other_logits = min_fn(self_logits[:, None, :], logits)
-        other_logits[(self_logits[:, :, None] == logits)] = -self.inf
+        diag_mask = info.to(torch.eye(logits.shape[1]))[None]
+        other_logits = other_logits - (other_logits + self.inf) * diag_mask
         submax_logits, subargmax = other_logits.max(2)
         '''
         conditinal probability:
@@ -178,7 +181,8 @@ class HEmbedding(nn.Module):
         '''
         conditional_logit = logit_exist(self_logits, submax_logits)
 
-        self.log_logits(logits, self_logits, submax_logits, concept_index)
+        if not args.silent:
+            self.log_logits(logits, self_logits, submax_logits, concept_index)
 
 
         ''' if dealing with a classification task '''
@@ -331,6 +335,8 @@ class HEmbedding(nn.Module):
         losses[i] = F.nll_loss(log_softmax[None], processed['answer'][i][None]) +\
             penalty_loss * args.penalty
         outputs[i] = log_softmax
+
+
 
     '''
     (only used in ground-truth mode)
@@ -489,7 +495,7 @@ class HEmbedding(nn.Module):
         plt.clf()
 
     def scatter(self, x, y, lim, names):
-        plt.scatter(x, y, s=0.1)
+        plt.scatter(x, y, s=0.03)
         plt.xlabel(names[0])
         plt.ylabel(names[1])
         plt.xlim(lim)

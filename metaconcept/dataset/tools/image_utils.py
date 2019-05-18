@@ -39,7 +39,7 @@ def _get_object_boxes(scene):
     if masks != []:
         boxes = [mask_utils.toBbox(i['mask']) for i in _get_object_masks(scene)]
     else:
-        if 'x' in list(scene['objects'].values())[0]:
+        if len(scene['objects']) > 0 and 'x' in list(scene['objects'].values())[0]:
             boxes = [[o['x'], o['y'], o['w'], o['h']]
                      for o in scene['objects'].values()]
         else:
@@ -50,7 +50,7 @@ def _get_object_boxes(scene):
         return boxes
 
     else:
-        return {'objects': np.zeros((0, 4), dtype='float32')}
+        return np.zeros((0, 4), dtype='float32')
 
 def annotate_objects(scene, from_shape=None, to_shape=None):
     if 'objects' not in scene and 'objects_detection' not in scene:

@@ -50,7 +50,8 @@ class Config(object):
             self.dir_args[group].append(arg_name.strip('-'))
             parser.add_argument(arg_name, **kwargs)
 
-        parser.add_argument('--task', default='toy', choices=['gqa', 'toy', 'clevr_pt', 'clevr_dt'])
+        parser.add_argument('--task', default='toy',
+                            choices=['gqa_dt', 'toy', 'clevr_pt', 'clevr_dt'])
 
         # current model: h_embedding_add2
         parser.add_argument('--model', default='h_embedding_add2', choices=[
@@ -222,6 +223,8 @@ class Config(object):
 
     def print(self):
         print('Arguments: ------------------------')
-        jacinle.kvprint(self.__dict__)
+        dicts = {k: v for k, v in self.__dict__.items()
+                 if len(str(v)) < 100}
+        jacinle.kvprint(dicts)
         print('-----------------------------------')
 

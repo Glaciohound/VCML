@@ -12,6 +12,7 @@ from metaconcept.dataset.tools.image_transforms import SquarePad
 from metaconcept.dataset.tools import sceneGraph_port, image_utils
 from metaconcept.dataset.tools import protocol
 from metaconcept.dataset.toy import teddy_dataset
+from jacinle.utils.cache import fs_cached_result
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -33,12 +34,15 @@ class Dataset(torch.utils.data.Dataset):
             print('DONE')
             print('Registering vocabulary ... ', end='', flush=True)
             sceneGraph_port.register_vocabulary(cls.main_sceneGraphs)
+            self.sceneGraphs = cls.main_sceneGraphs
             print('DONE')
 
-        self.sceneGraphs = deepcopy(cls.main_sceneGraphs)
         if args.visual_bias and config == 'full':
+            print('Copying sceneGraphs ... ', end='', flush=True)
+            self.sceneGraphs = deepcopy(self.sceneGraphs)
+            print('DONE')
             print('Filtering sceneGraphs ...', end='', flush=True)
-            self.filter_fn = \
+            self.filter_fn =\
                 sceneGraph_port.customize_filterFn(args.visual_bias,
                                                    val_reverse=True,
                                                    )
@@ -122,7 +126,6 @@ class Dataset(torch.utils.data.Dataset):
             return sceneGraphs
 
         cache_name = args.group + '_' + args.task
-        from jacinle.utils.cache import fs_cached_result
         @fs_cached_result(f'../cache/sng_{cache_name}.pkl')
         def get_scene_graph():
             if args.group == 'gqa':

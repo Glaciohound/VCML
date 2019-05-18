@@ -26,8 +26,9 @@ def preprocess_operation(cur):
         argument = 'scene'
     elif argument == '?':
         argument = ''
-    elif ' ' in argument:
-        argument = argument.replace(' ', '_')
+    #elif ' ' in argument:
+    #    argument = argument.replace(' ', '_')
+    # TODO: need checking
 
     return operation, category, argument, obj
 

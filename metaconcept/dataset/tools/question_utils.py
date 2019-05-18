@@ -7,6 +7,7 @@ special_tokens = {
 import numpy as np
 from . import program_utils
 from metaconcept import info, args
+from tqdm import tqdm
 
 
 def build_tokenMap(obj, vocabulary, add_special_tokens=False):
@@ -63,15 +64,28 @@ def register_concepts(questions):
     if isinstance(questions, dict):
         questions = questions.values()
 
-    for q in questions:
+    operations = set()
+    concepts = set(info.vocabulary.concepts)
+    metaconcepts = set()
+
+    for q in tqdm(questions):
+        if q['type'] == 'classification':
+            continue
         for op in program_utils.semantic2program_h(q['semantic']):
-            info.protocol['operations', op['operation']]
-            info.protocol['concepts', op['argument']]
+            operations.add(op['operation'])
+            concepts.add(op['argument'])
             if op['operation'].startswith('transfer'):
-                info.protocol['metaconcepts', op['argument']]
+                metaconcepts.add(op['argument'])
 
         encode_question(q['question'])
-        info.protocol['concepts', q['answer']]
+        concepts.add(q['answer'])
+
+    for _op in operations:
+        info.protocol['operations', _op]
+    for _concept in concepts:
+        info.protocol['concepts', _concept]
+    for _meta in metaconcepts:
+        info.protocol['metaconcepts', _meta]
 
     args.max_concepts = max(args.max_concepts,
                             len(info.protocol['concepts']))

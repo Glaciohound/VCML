@@ -11,7 +11,9 @@ def build_incremental_training_datasets(
         visual_dataset = visual_dataset_class(config)
         info.visual_dataset = visual_dataset
         question_dataset = question_dataset_class(visual_dataset, config)
+        print('Splitting Dataset ... ', end='', flush=True)
         train, val, test = question_dataset_class.get_splits(question_dataset)
+        print('DONE')
 
         new_dataset = {
             'visual_dataset': visual_dataset,

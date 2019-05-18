@@ -82,7 +82,9 @@ class Dataset(torch.utils.data.Dataset):
                         if 'type' in q)
         self.answers = set(q['answer'] for q in self.questions.values())
 
+        print('Registering concepts ... ', end='', flush=True)
         question_utils.register_concepts(self.questions)
+        print('DONE')
 
     def to_split(self, split):
         new_dataset = copy.copy(self)
