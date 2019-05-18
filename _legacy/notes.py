@@ -12,7 +12,6 @@ from metaconcept.dataset.tools.image_transforms import SquarePad
 from metaconcept.dataset.tools import sceneGraph_port, image_utils
 from metaconcept.dataset.tools import protocol
 from metaconcept.dataset.toy import teddy_dataset
-from jacinle.utils.cache import fs_cached_result
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -34,15 +33,12 @@ class Dataset(torch.utils.data.Dataset):
             print('DONE')
             print('Registering vocabulary ... ', end='', flush=True)
             sceneGraph_port.register_vocabulary(cls.main_sceneGraphs)
-            self.sceneGraphs = cls.main_sceneGraphs
             print('DONE')
 
+        self.sceneGraphs = deepcopy(cls.main_sceneGraphs)
         if args.visual_bias and config == 'full':
-            print('Copying sceneGraphs ... ', end='', flush=True)
-            self.sceneGraphs = deepcopy(self.sceneGraphs)
-            print('DONE')
             print('Filtering sceneGraphs ...', end='', flush=True)
-            self.filter_fn =\
+            self.filter_fn = \
                 sceneGraph_port.customize_filterFn(args.visual_bias,
                                                    val_reverse=True,
                                                    )
@@ -63,7 +59,7 @@ class Dataset(torch.utils.data.Dataset):
             raise exc
 
     def __getitem_inner__(self, index):
-        if isinstance(index, int):
+        if not isinstance(index, str):
             index = self.index[index]
 
         output = {}
@@ -121,38 +117,36 @@ class Dataset(torch.utils.data.Dataset):
                                             gather=True,
                                             use_special_tokens=False)
 
-        if args.task == 'toy':
+        if args.group == 'gqa':
+            sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
+
+        elif args.group == 'clevr':
+            sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
+
+            if args.task.endswith('pt'):
+                sceneGraphs = sceneGraph_port.merge_sceneGraphs(
+                    sceneGraph_port.load_multiple_sceneGraphs(args.feature_sceneGraph_dir),
+                    sceneGraphs,
+                )
+
+        elif args.task == 'toy':
             sceneGraphs = teddy_dataset.ToyDataset.build_visual_dataset()
-            return sceneGraphs
 
-        cache_name = args.group + '_' + args.task
-        @fs_cached_result(f'../cache/sng_{cache_name}.pkl')
-        def get_scene_graph():
-            if args.group == 'gqa':
-                sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
-            elif args.group == 'clevr':
-                sceneGraphs = sceneGraph_port.load_multiple_sceneGraphs(args.sceneGraph_dir)
-                if args.task.endswith('pt'):
-                    sceneGraphs = sceneGraph_port.merge_sceneGraphs(
-                        sceneGraph_port.load_multiple_sceneGraphs(args.feature_sceneGraph_dir),
-                        sceneGraphs,
-                    )
-            else:
-                raise Exception('No such task supported: %s' % args.task)
-            if args.group == 'gqa' or args.task.endswith('dt'):
-                all_imageNames = image_utils.get_imageNames(args.image_dir)
-                for imageName in all_imageNames:
-                    default_scene = {'image_filename': imageName}
-                    sceneGraph_port.default_scene(default_scene)
-                    image_id = default_scene['image_id']
-                    if not image_id in sceneGraphs:
-                        sceneGraphs[image_id] = default_scene
-                    else:
-                        sceneGraphs[image_id].update(default_scene)
+        else:
+            raise Exception('No such task supported: %s' % args.task)
 
-            return sceneGraphs
+        if args.group == 'gqa' or args.task.endswith('dt'):
+            all_imageNames = image_utils.get_imageNames(args.image_dir)
+            for imageName in all_imageNames:
+                default_scene = {'image_filename': imageName}
+                sceneGraph_port.default_scene(default_scene)
+                image_id = default_scene['image_id']
+                if not image_id in sceneGraphs:
+                    sceneGraphs[image_id] = default_scene
+                else:
+                    sceneGraphs[image_id].update(default_scene)
 
-        return get_scene_graph()
+        return sceneGraphs
 
     def split(self):
         self.split_indexes = {key: [k for k, s in self.sceneGraphs.items()
@@ -201,3 +195,4 @@ class Dataset(torch.utils.data.Dataset):
         for x in features:
             x += [-1 for i in range(dim_features - len(x))]
         return np.array(features)
+

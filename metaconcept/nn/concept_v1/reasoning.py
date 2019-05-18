@@ -44,8 +44,8 @@ class ProgramExecutor(nn.Module):
                     self.concept_embeddings.infer_metaconcept('object_classify', object_features, concept)
                 ))
             elif op == 'exist':
-                # v = stack.pop().max(dim=0)[0] * 0.5
-                v = jactorch.logsumexp(stack.pop(), dim=0) * 0.5
+                v = stack.pop().max(dim=0)[0] * 0.5
+                # v = jactorch.logsumexp(stack.pop(), dim=0) * 0.5
                 stack.append((
                     torch.stack([v, -v], dim=0),
                     {'yes': 0, 'no': 1},

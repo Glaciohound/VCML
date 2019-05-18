@@ -6,10 +6,11 @@ special_tokens = {
 }
 import numpy as np
 from . import program_utils
-from metaconcept import info
+from metaconcept import info, args
+from tqdm import tqdm
 
 
-def build_tokenMap(obj, vocabulary, add_special_tokens=False):
+def build_tokenMap(obj, vocabulary, add_special_tokens=True):
     tokenMap = {}
     if add_special_tokens:
         for l in vocabulary.values():
@@ -63,14 +64,36 @@ def register_concepts(questions):
     if isinstance(questions, dict):
         questions = questions.values()
 
-    for q in questions:
+    operations = set()
+    concepts = set(info.vocabulary.concepts)
+    metaconcepts = set()
+    answers = set(['yes', 'no'])
+
+    for q in tqdm(questions):
+        if q['type'] == 'classification':
+            continue
         for op in program_utils.semantic2program_h(q['semantic']):
-            info.protocol['operations', op['operation']]
-            info.protocol['concepts', op['argument']]
+            operations.add(op['operation'])
+            concepts.add(op['argument'])
             if op['operation'].startswith('transfer'):
-                info.protocol['metaconcepts', op['argument']]
+                metaconcepts.add(op['argument'])
 
         encode_question(q['question'])
-        info.protocol['concepts', q['answer']]
 
-    return info.protocol['metaconcepts']
+    for _op in operations:
+        info.protocol['operations', _op]
+    for _concept in concepts:
+        info.protocol['concepts', _concept]
+    for _meta in metaconcepts:
+        info.protocol['metaconcepts', _meta]
+    for _ans in answers:
+        info.protocol['answers', _ans]
+
+    args.max_concepts = max(args.max_concepts,
+                            len(info.protocol['concepts']))
+
+    all_concepts = info.vocabulary.concepts
+    info.concept_indexes = [
+        -1 for i in range(len(info.protocol['concepts']))]
+    for i, name in enumerate(all_concepts):
+        info.concept_indexes[info.protocol['concepts', name]] = i

@@ -103,13 +103,6 @@ def init():
 def run():
     for info.epoch in tqdm(range(1, args.epochs + 1)):
 
-        if args.visualize_dir and not args.silent:
-            if not isinstance(info.model, Classification):
-                info.model.visualize_embedding(args.visualize_relation)
-                info.model.visualize_logit()
-            info.train_recording.visualize()
-            info.val_recording.visualize()
-
         train_epoch()
         if not args.no_validation:
             val_epoch()
@@ -120,10 +113,19 @@ def run():
         info.val_recording.clear()
 
         if not args.silent:
+            if not isinstance(info.model, Classification):
+                info.model.visualize_embedding(args.visualize_relation)
+                info.model.visualize_logit()
+            info.train_recording.visualize()
+            info.val_recording.visualize()
+
             info.model.save(args.name)
-            save_log(os.path.join(args.log_dir, args.name+'.pkl'),
+            save_log(os.path.join(args.log_dir, args.name),
                     info.val_recording.history,
                     args.__dict__)
+            info.dataset_scheduler.save(
+                os.path.join(args.ckpt_dir, args.name+'_datasets')
+            )
 
 
 def main():
@@ -140,10 +142,12 @@ def main():
                                             question_dataset.Dataset)
     args.names = info.vocabulary.concepts
 
+    print('Building model ... ', end='', flush=True)
     if args.model in ['h_embedding_mul', 'h_embedding_add', 'h_embedding_add2']:
         info.model = HEmbedding()
     else:
         raise ValueError('Unknown model: {}.'.format(args.model))
+    print('DONE')
 
     args.print()
     info.pbars = []

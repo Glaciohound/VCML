@@ -1,2 +1,0 @@
-filter_isinstance_pt series are trained on GPU18
-filter_isinstance_dt series are trained on GPU20

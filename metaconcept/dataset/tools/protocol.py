@@ -5,7 +5,7 @@ from . import question_utils
 
 
 class Protocol:
-    def __init__(self, allow_output_protocol, protocol_file, gather=False, use_special_tokens=True):
+    def __init__(self, allow_output_protocol, protocol_file, gather=False, use_special_tokens=False):
         self.allow_output_protocol = allow_output_protocol
         self.gather = gather
         self.protocol_file = protocol_file

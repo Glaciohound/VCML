@@ -15,7 +15,7 @@ from PIL import Image
 import jaclearn.vision.coco.mask_utils as mask_utils
 
 
-def _is_object_annotation_available(scene):
+def _is_object_mask_available(scene):
     objects = scene['objects']
     if isinstance(objects, dict):
         objects = list(objects.values())
@@ -23,26 +23,41 @@ def _is_object_annotation_available(scene):
         return True
     return False
 
-
 def _get_object_masks(scene):
     """Backward compatibility: in self-generated clevr scenes, the groundtruth masks are provided;
     while in the clevr test data, we use Mask R-CNN to detect all the masks, and stored in `objects_detection`."""
     if 'objects_detection' in scene:
         return scene['objects_detection']
-    elif _is_object_annotation_available(scene):
-        return scene['objects'].values()
+    elif _is_object_mask_available(scene):
+        return [obj['mask'] for obj in scene['objects'].values()]
     else:
         return []
 
+def _get_object_boxes(scene):
+
+    masks = _get_object_masks(scene)
+    if masks != []:
+        boxes = [mask_utils.toBbox(i['mask']) for i in _get_object_masks(scene)]
+    else:
+        if len(scene['objects']) > 0 and 'x' in list(scene['objects'].values())[0]:
+            boxes = [[o['x'], o['y'], o['w'], o['h']]
+                     for o in scene['objects'].values()]
+        else:
+            boxes = []
+
+    if boxes != []:
+        boxes = np.array(boxes)
+        return boxes
+
+    else:
+        return np.zeros((0, 4), dtype='float32')
 
 def annotate_objects(scene, from_shape=None, to_shape=None):
     if 'objects' not in scene and 'objects_detection' not in scene:
         return dict()
 
-    boxes = [mask_utils.toBbox(i['mask']) for i in _get_object_masks(scene)]
-    if len(boxes) == 0:
-        return {'objects': np.zeros((0, 4), dtype='float32')}
-    boxes = np.array(boxes)
+    boxes = _get_object_boxes(scene)
+
     boxes[:, 2] += boxes[:, 0]
     boxes[:, 3] += boxes[:, 1]
     boxes = boxes.astype('float32')

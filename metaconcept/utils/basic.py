@@ -11,5 +11,5 @@ def init_seed(n=0):
 
 
 def save_log(log_file, *objs):
-    with open(log_file, 'wb') as f:
+    with open(log_file+'.pkl', 'wb') as f:
         pickle.dump(objs, f)

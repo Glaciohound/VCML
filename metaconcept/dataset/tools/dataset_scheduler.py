@@ -1,6 +1,7 @@
 from torch.utils.data.dataset import Dataset
 from metaconcept import args, info
 from metaconcept.dataset.dataloader import get_dataloaders
+import pickle
 
 
 def build_incremental_training_datasets(
@@ -11,7 +12,9 @@ def build_incremental_training_datasets(
         visual_dataset = visual_dataset_class(config)
         info.visual_dataset = visual_dataset
         question_dataset = question_dataset_class(visual_dataset, config)
+        print('Splitting Dataset ... ', end='', flush=True)
         train, val, test = question_dataset_class.get_splits(question_dataset)
+        print('DONE')
 
         new_dataset = {
             'visual_dataset': visual_dataset,
@@ -148,3 +151,12 @@ class DatasetScheduler:
         if len(args.incremental_training) == 1:
             return args.incremental_training[0]
         return args.incremental_training[self.dataset_count]
+
+    def save(self, filename):
+        _output = [{
+            'sceneGraphs': dataset_kit['visual_dataset'].sceneGraphs,
+            'questions': dataset_kit['question_dataset'].questions}
+            for dataset_kit in info.dataset_all
+        ]
+        with open(filename+'.pkl', 'wb') as f:
+            pickle.dump(_output, f)

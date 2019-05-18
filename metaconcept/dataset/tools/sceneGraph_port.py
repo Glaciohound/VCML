@@ -6,6 +6,7 @@ from functools import reduce
 from metaconcept import info, args
 from metaconcept.utils.common import union, get_imageId
 from collections import Counter
+from tqdm import tqdm
 
 
 def load_sceneGraphs(filename):
@@ -29,21 +30,37 @@ def load_sceneGraphs(filename):
         if isinstance(scene['objects'], list):
             scene['objects'] =\
                 {str(i): obj for i, obj in enumerate(scene['objects'])}
-        for obj in scene['objects'].values():
-            if 'attributes' in obj and 'name' in obj:
-                obj['attributes'].append(obj['name'])
-        sceneGraphs[scene['image_id']] = scene
+        image_id = scene['image_id']
+
+        if args.group == 'gqa':
+            scene_obj = {
+                'x': 0, 'y': 0,
+                'w': scene['width'], 'h': scene['height'],
+            }
+            if 'location' in scene:
+                scene_obj['name'] = scene['location']
+            scene['objects']['scene_{image_id}'] = scene_obj
+
+        sceneGraphs[image_id] = scene
 
     return sceneGraphs
 
 
 def register_vocabulary(sceneGraphs):
-    for scene in sceneGraphs.values():
+    concepts = set()
+    for scene in tqdm(sceneGraphs.values()):
         if 'objects' in scene:
             for obj in scene['objects'].values():
                 for cat, attr in obj.items():
                     if isinstance(attr, str):
                         info.vocabulary[cat, attr]
+                        concepts.add(attr)
+                    if cat == 'attributes':
+                        for at in attr:
+                            info.vocabulary[cat, at]
+                            concepts.add(at)
+    for _concept in concepts:
+        info.protocol['concepts', _concept]
 
 
 def merge_sceneGraphs(x, y):

@@ -217,3 +217,4 @@ def logit_xor(x, y):
 
 def logit_xand(x, y):
     return -logit_xor(x, y)
+
