@@ -113,7 +113,7 @@ class DatasetScheduler:
 
         if acc >= args.perfect_th and self.dataset_count < len(all_)-1:
             self.dataset_count += 1
-            message = 'Dataset is scheduled to %s' % args.incremental_training[self.dataset_count]
+            message = 'Dataset is scheduled to %s' % self.config
             print(message)
 
             this_dataset = all_[self.dataset_count]
@@ -145,4 +145,6 @@ class DatasetScheduler:
 
     @property
     def config(self):
+        if len(args.incremental_training) == 1:
+            return args.incremental_training[0]
         return args.incremental_training[self.dataset_count]

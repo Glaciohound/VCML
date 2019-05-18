@@ -46,6 +46,19 @@ def scene_representation(data, batch_idx):
     return object_bboxes, object_classes
 
 
+def run_symbolic_execution(data, batch_idx):
+    scene = scene_representation(data, batch_idx)
+    program = data['program'][idx]
+
+    stack = list()
+    for p in program:
+        op = p['operation']
+        arg = p['argument']
+
+        if op == 'select':
+            pass
+
+
 def run_batch(data):
     loss, monitors, _ = info.model(data)
     return loss, as_float(monitors)

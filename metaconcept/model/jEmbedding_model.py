@@ -103,7 +103,8 @@ class JEmbedding(nn.Module):
         canonize_monitors(monitors)
 
         if self.training:
-            monitors['loss'] = monitors['loss.qa'] + monitors['loss.concept']
+            # monitors['loss'] = monitors['loss.qa'] + monitors['loss.concept']
+            monitors['loss'] = monitors['loss.qa']
             monitors['acc'] = monitors['acc.qa']
             return monitors['loss'], monitors, outputs
         else:

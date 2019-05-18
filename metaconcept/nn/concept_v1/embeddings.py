@@ -8,6 +8,7 @@
 # This file is part of MetaConcept.
 # Distributed under terms of the MIT license.
 
+import math
 import torch
 import torch.nn as nn
 import jactorch.nn as jacnn
@@ -47,6 +48,10 @@ class ConceptEmbedding(nn.Module):
         max_size = tuple(map(max, zip(a.shape, b.shape)))
         a = a.expand(max_size)
         b = b.expand(max_size)
+
+        if name == 'object_classify':
+            return (a * b).sum(dim=-1) / math.sqrt(a.shape[-1])
+
         abdp = torch.cat([a, b, a - b, a * b], dim=-1)
         return self.get_metaconcept(name)(abdp).squeeze(-1)
 
