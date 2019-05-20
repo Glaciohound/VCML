@@ -49,8 +49,8 @@ class ConceptEmbedding(nn.Module):
         a = a.expand(max_size)
         b = b.expand(max_size)
 
-        if name == 'object_classify':
-            return (a * b).sum(dim=-1) / math.sqrt(a.shape[-1])
+        # if name == 'object_classify':
+        #     return (a * b).sum(dim=-1) / math.sqrt(a.shape[-1])
 
         abdp = torch.cat([a, b, a - b, a * b], dim=-1)
         return self.get_metaconcept(name)(abdp).squeeze(-1)

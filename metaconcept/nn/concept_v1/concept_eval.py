@@ -13,6 +13,7 @@ from collections import defaultdict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from jacinle.logging import get_logger; logger = get_logger(__file__)
 from jactorch.utils.meta import as_float
 
 from metaconcept import info
@@ -56,4 +57,31 @@ def pn_bce_logits(logits, target):
     loss = F.binary_cross_entropy_with_logits(result, object_classes[:, i].to(result), weight=torch.tensor(
         [1 / pos, 1 / neg]
     ).to(result))
+
+
+class ConceptIsinstanceEvaluation(nn.Module):
+    def __init__(self, concept_embeddings, training):
+        super().__init__()
+        self.concept_embeddings = concept_embeddings
+        self.types = list(info.vocabulary.records.keys())
+        self.concepts = info.vocabulary.concepts
+        self.training = training
+
+    def forward(self):
+        all_concept_names, all_concepts = self.concept_embeddings.get_all_concepts()
+        concept2idx = {v: i for i, v in enumerate(all_concept_names)}
+        max_len_name = max(map(len, all_concept_names))
+
+        log_lines = ['Concept Isistance Evaluation:']
+        for concept_name in self.concepts:
+            concept_idx = concept2idx[concept_name]
+            score = self.concept_embeddings.infer_metaconcept('isinstance', all_concepts[concept_idx].unsqueeze(0), all_concepts)
+            score = F.softmax(score, dim=-1)
+
+            type_scores = dict()
+            for t in self.types:
+                type_scores[t] = as_float(score[concept2idx[t]])
+
+            log_lines.append('  {:' + str(max_len_name) + '}: '.format(concept_name) + '; '.join([f'{k}={v:.4f}' for k, v in type_scores.items()]))
+        logger.info('\n'.join(log_lines))
 

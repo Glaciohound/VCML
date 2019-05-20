@@ -93,6 +93,7 @@ class Config(object):
         parser.add_argument('--subtasks', default='exist', nargs='+', choices=[
             'exist', 'filter', 'query', 'classification', 'synonym', 'isinstance',
         ])
+        parser.add_argument('--scene_loss_weight', default=0., type=float)
 
         parser.add_argument('--no_aid', action='store_true', help='setting B in de-biasing experiments')
         parser.add_argument('--visual_bias', nargs='+', required=False,
@@ -131,7 +132,7 @@ class Config(object):
         parser.add_argument('--log_dir', type=str,
                             default='../data/log')
         parser.add_argument('--ckpt_dir', type=str,
-                            default='../data/gqa/checkpoints')
+                            default='../data/checkpoints')
         parser.add_argument('--visualize_interval', type=int, default=500)
         parser.add_argument('--embed', action='store_true', help='enter IPython.embed before training')
         parser.add_argument('--silent', action='store_true',

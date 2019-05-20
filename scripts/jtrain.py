@@ -1,5 +1,7 @@
 import sys
+import time
 import os
+import os.path as osp
 
 from IPython.core import ultratb; sys.excepthook = ultratb.FormattedTB(mode='Plain', color_scheme='Linux', call_pdb=1)
 
@@ -10,7 +12,8 @@ from IPython import embed
 import numpy as np
 import torch
 
-from jacinle.logging import get_logger; logger = get_logger(__file__)
+import jacinle.io as io
+from jacinle.logging import get_logger, set_output_file; logger = get_logger(__file__)
 from jactorch.utils.meta import as_float
 
 from metaconcept.config import Config, Info
@@ -22,7 +25,11 @@ from metaconcept.utils.basic import init_seed, save_log
 
 args = Config()
 info = Info(args)
-
+log_dir = osp.join(args.log_dir, args.name)
+io.mkdir(log_dir)
+run_name = 'trainval-{}'.format(time.strftime('%Y-%m-%d-%H-%M-%S'))
+log_file = osp.join(log_dir, run_name + '.log')
+set_output_file(log_file)
 
 def unnormalize_image(image):
     return image * torch.tensor([0.229, 0.224, 0.225]).to(image)[:, None, None] + torch.tensor([0.485, 0.456, 0.406]).to(image)[:, None, None]
@@ -46,17 +53,25 @@ def scene_representation(data, batch_idx):
     return object_bboxes, object_classes
 
 
-def run_symbolic_execution(data, batch_idx):
-    scene = scene_representation(data, batch_idx)
+def run_symbolic_execution(data, idx):
+    scene = scene_representation(data, idx)[1]
     program = data['program'][idx]
+    answer = data['answer'][idx]
 
-    stack = list()
-    for p in program:
-        op = p['operation']
-        arg = p['argument']
+    pred = None
+    if data['type'][idx] == 'filter-filter-exist':
+        assert len(program) == 4
+        arg1, arg2 = program[1]['argument'], program[2]['argument']
 
-        if op == 'select':
-            pass
+        flag = False
+        for x in scene:
+            if arg1 in x and arg2 in x:
+                flag = True
+                break
+
+        pred = 'yes' if flag else 'no'
+
+    return pred, answer
 
 
 def run_batch(data):
@@ -107,6 +122,9 @@ def init():
 
 def run():
     for info.epoch in range(1, args.epochs + 1):
+        if hasattr(info.model, 'eval_isinstance'):
+            info.model.eval_isinstance()
+
         # TODO(Jiayuan Mao @ 05/16): implement.
         # if args.visualize_dir and not args.silent:
         #     if not isinstance(info.model, Classification):

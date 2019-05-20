@@ -32,7 +32,7 @@ from metaconcept import info, args
 from metaconcept.nn.scene_graph import ResNetSceneGraph
 from metaconcept.nn.concept_v1.embeddings import ConceptEmbedding
 from metaconcept.nn.concept_v1.reasoning import ProgramExecutor
-from metaconcept.nn.concept_v1.concept_eval import ConceptEvaluation
+from metaconcept.nn.concept_v1.concept_eval import ConceptEvaluation, ConceptIsinstanceEvaluation
 from metaconcept.utils.common import to_numpy, to_normalized, min_fn, matmul, to_tensor, vistb, arange, logit_exist, log_or, logit_xand
 
 
@@ -54,6 +54,9 @@ class JEmbedding(nn.Module):
         # TODO(Jiayuan Mao @ 05/16): use the value from the dataset.
         for k in ['object_classify', 'isinstance', 'synonym', 'hypernym', 'hyponym']:
             self.concept_embeddings.init_metaconcept(k, args.embed_dim)
+
+    def eval_isinstance(self):
+        _ = ConceptIsinstanceEvaluation(self.concept_embeddings, self.training)()
 
     def forward(self, data):
         batch_size = data['answer'].shape[0]
@@ -103,8 +106,10 @@ class JEmbedding(nn.Module):
         canonize_monitors(monitors)
 
         if self.training:
-            # monitors['loss'] = monitors['loss.qa'] + monitors['loss.concept']
-            monitors['loss'] = monitors['loss.qa']
+            if args.scene_loss_weight == 0:
+                monitors['loss'] = monitors['loss.qa']
+            else:
+                monitors['loss'] = monitors['loss.qa'] + monitors['loss.concept'] * args.scene_loss_weight
             monitors['acc'] = monitors['acc.qa']
             return monitors['loss'], monitors, outputs
         else:
