@@ -74,14 +74,13 @@ class ConceptIsinstanceEvaluation(nn.Module):
 
         log_lines = ['Concept Isistance Evaluation:']
         for concept_name in self.concepts:
-            concept_idx = concept2idx[concept_name]
-            score = self.concept_embeddings.infer_metaconcept('isinstance', all_concepts[concept_idx].unsqueeze(0), all_concepts)
+            score = self.concept_embeddings.infer_metaconcept('isinstance', self.concept_embeddings.get_concept(concept_name).unsqueeze(0), all_concepts)
             score = F.softmax(score, dim=-1)
 
             type_scores = dict()
             for t in self.types:
                 type_scores[t] = as_float(score[concept2idx[t]])
 
-            log_lines.append('  {:' + str(max_len_name) + '}: '.format(concept_name) + '; '.join([f'{k}={v:.4f}' for k, v in type_scores.items()]))
+            log_lines.append(('  {:' + str(max_len_name) + '}: ').format(concept_name) + '; '.join([f'{k}={v:.4f}' for k, v in type_scores.items()]))
         logger.info('\n'.join(log_lines))
 
