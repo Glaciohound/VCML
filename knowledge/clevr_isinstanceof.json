@@ -1,0 +1,25 @@
+{
+    "color": [
+        "yellow",
+        "blue",
+        "gray",
+        "green",
+        "red",
+        "purple",
+        "brown",
+        "cyan"
+    ],
+    "size": [
+        "small",
+        "large"
+    ],
+    "shape": [
+        "cube",
+        "cylinder",
+        "sphere"
+    ],
+    "material": [
+        "metal",
+        "rubber"
+    ]
+}

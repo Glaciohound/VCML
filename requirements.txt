@@ -1,0 +1,16 @@
+numpy
+pytorch==1.2.0
+torchvision
+inflect
+h5py
+pycocotools
+IPython
+opencv
+scikit-learn
+tqdm
+pyzmq
+lmdb
+tabulate
+pandas
+pyyaml
+yaml

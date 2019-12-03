@@ -1,0 +1,1424 @@
+{
+    "adult": [
+        "grownup",
+        "adult"
+    ],
+    "airplane": [
+        "aeroplane",
+        "plane",
+        "airplane"
+    ],
+    "airport": [
+        "airdrome",
+        "drome",
+        "airport",
+        "aerodrome"
+    ],
+    "aluminum": [
+        "aluminium",
+        "aluminum",
+        "Al"
+    ],
+    "animal": [
+        "fauna",
+        "animal",
+        "beast",
+        "creature",
+        "brute"
+    ],
+    "antenna": [
+        "antenna",
+        "aerial"
+    ],
+    "antique": [
+        "antique",
+        "oldtimer",
+        "gaffer"
+    ],
+    "arrow": [
+        "arrow",
+        "pointer"
+    ],
+    "artwork": [
+        "art",
+        "graphics",
+        "artwork"
+    ],
+    "asian": [
+        "Asiatic",
+        "asian",
+        "Asian"
+    ],
+    "baby": [
+        "babe",
+        "infant",
+        "baby"
+    ],
+    "backpack": [
+        "rucksack",
+        "knapsack",
+        "backpack",
+        "packsack",
+        "haversack"
+    ],
+    "bandana": [
+        "bandanna",
+        "bandana"
+    ],
+    "basket": [
+        "handbasket",
+        "basket"
+    ],
+    "bat": [
+        "bat",
+        "chiropteran"
+    ],
+    "bathroom": [
+        "bath",
+        "bathroom"
+    ],
+    "bathtub": [
+        "tub",
+        "bath",
+        "bathtub"
+    ],
+    "batter": [
+        "batter",
+        "hitter",
+        "slugger",
+        "batsman"
+    ],
+    "beard": [
+        "whiskers",
+        "beard"
+    ],
+    "bedroom": [
+        "chamber",
+        "bedroom",
+        "bedchamber"
+    ],
+    "bedspread": [
+        "counterpane",
+        "bedspread",
+        "bedcover",
+        "spread"
+    ],
+    "beige": [
+        "beige",
+        "ecru"
+    ],
+    "bending": [
+        "bending",
+        "bend"
+    ],
+    "bent": [
+        "set",
+        "bent"
+    ],
+    "beverage": [
+        "drinkable",
+        "drink",
+        "potable",
+        "beverage"
+    ],
+    "bicycle": [
+        "wheel",
+        "cycle",
+        "bike",
+        "bicycle"
+    ],
+    "bike": [
+        "motorcycle",
+        "bike"
+    ],
+    "bikini": [
+        "Bikini",
+        "bikini"
+    ],
+    "black": [
+        "black",
+        "blackness",
+        "inkiness"
+    ],
+    "blanket": [
+        "cover",
+        "blanket"
+    ],
+    "blender": [
+        "blender",
+        "liquidiser",
+        "liquidizer"
+    ],
+    "blond": [
+        "blond",
+        "blonde"
+    ],
+    "blue": [
+        "blueness",
+        "blue"
+    ],
+    "bracelet": [
+        "bracelet",
+        "watchband",
+        "wristband",
+        "watchstrap"
+    ],
+    "branch": [
+        "arm",
+        "subdivision",
+        "branch"
+    ],
+    "bread": [
+        "breadstuff",
+        "bread"
+    ],
+    "bridge": [
+        "span",
+        "bridge"
+    ],
+    "brown": [
+        "brownness",
+        "brown"
+    ],
+    "brush": [
+        "brush",
+        "brushwood",
+        "copse",
+        "thicket",
+        "coppice"
+    ],
+    "bucket": [
+        "bucket",
+        "pail"
+    ],
+    "building": [
+        "building",
+        "edifice"
+    ],
+    "bun": [
+        "roll",
+        "bun"
+    ],
+    "bus": [
+        "autobus",
+        "motorbus",
+        "charabanc",
+        "motorcoach",
+        "bus",
+        "jitney",
+        "omnibus",
+        "coach"
+    ],
+    "bush": [
+        "shrub",
+        "bush"
+    ],
+    "cable": [
+        "cable",
+        "cablegram"
+    ],
+    "cage": [
+        "cage",
+        "coop"
+    ],
+    "cake": [
+        "cake",
+        "bar"
+    ],
+    "calm": [
+        "calm",
+        "equanimity",
+        "calmness",
+        "composure"
+    ],
+    "can": [
+        "can",
+        "tin"
+    ],
+    "candle": [
+        "candle",
+        "taper"
+    ],
+    "candy": [
+        "confect",
+        "candy"
+    ],
+    "car": [
+        "machine",
+        "automobile",
+        "car",
+        "auto",
+        "motorcar"
+    ],
+    "carpet": [
+        "carpeting",
+        "rug",
+        "carpet"
+    ],
+    "carriage": [
+        "carriage",
+        "coach"
+    ],
+    "catcher": [
+        "backstop",
+        "catcher"
+    ],
+    "chain": [
+        "chain",
+        "concatenation"
+    ],
+    "chandelier": [
+        "pendent",
+        "chandelier",
+        "pendant"
+    ],
+    "chicken": [
+        "volaille",
+        "chicken",
+        "poulet"
+    ],
+    "child": [
+        "tike",
+        "shaver",
+        "child",
+        "tyke",
+        "nestling",
+        "fry",
+        "youngster",
+        "minor",
+        "tiddler",
+        "nipper",
+        "kid"
+    ],
+    "chocolate": [
+        "cocoa",
+        "chocolate"
+    ],
+    "city": [
+        "city",
+        "metropolis"
+    ],
+    "cliff": [
+        "drop",
+        "cliff"
+    ],
+    "clothes": [
+        "apparel",
+        "clothes",
+        "dress"
+    ],
+    "coffee": [
+        "coffee",
+        "java"
+    ],
+    "collar": [
+        "neckband",
+        "collar"
+    ],
+    "comforter": [
+        "sympathizer",
+        "comforter",
+        "sympathiser"
+    ],
+    "controller": [
+        "controller",
+        "accountant",
+        "comptroller"
+    ],
+    "cookie": [
+        "cooky",
+        "cookie",
+        "biscuit"
+    ],
+    "cooking": [
+        "cooking",
+        "preparation",
+        "cookery"
+    ],
+    "cords": [
+        "cords",
+        "corduroys"
+    ],
+    "corn": [
+        "corn",
+        "maize"
+    ],
+    "couch": [
+        "couch",
+        "sofa",
+        "lounge"
+    ],
+    "couple": [
+        "duet",
+        "duo",
+        "twosome",
+        "couple"
+    ],
+    "cows": [
+        "oxen",
+        "kine",
+        "cattle",
+        "cows"
+    ],
+    "crane": [
+        "crane",
+        "Crane"
+    ],
+    "crosswalk": [
+        "crossover",
+        "crosswalk",
+        "crossing"
+    ],
+    "cupboard": [
+        "closet",
+        "cupboard"
+    ],
+    "curtain": [
+        "curtain",
+        "drape",
+        "drapery",
+        "pall",
+        "mantle"
+    ],
+    "dark": [
+        "dark",
+        "darkness"
+    ],
+    "decoration": [
+        "ornament",
+        "decoration",
+        "ornamentation"
+    ],
+    "delicious": [
+        "Delicious",
+        "delicious"
+    ],
+    "denim": [
+        "denim",
+        "jean"
+    ],
+    "dessert": [
+        "dessert",
+        "afters",
+        "sweet"
+    ],
+    "dirt": [
+        "dirt",
+        "soil"
+    ],
+    "display": [
+        "display",
+        "show"
+    ],
+    "doll": [
+        "doll",
+        "dolly"
+    ],
+    "donut": [
+        "doughnut",
+        "sinker",
+        "donut"
+    ],
+    "doorway": [
+        "door",
+        "doorway",
+        "threshold"
+    ],
+    "drain": [
+        "drain",
+        "drainage"
+    ],
+    "drawers": [
+        "drawers",
+        "boxers",
+        "shorts",
+        "boxershorts",
+        "underdrawers"
+    ],
+    "dress": [
+        "frock",
+        "dress"
+    ],
+    "dresser": [
+        "bureau",
+        "dresser",
+        "chest"
+    ],
+    "drinking": [
+        "imbibition",
+        "imbibing",
+        "drinking"
+    ],
+    "driving": [
+        "driving",
+        "drive"
+    ],
+    "dry": [
+        "dry",
+        "prohibitionist"
+    ],
+    "eating": [
+        "eating",
+        "feeding"
+    ],
+    "eggs": [
+        "eggs",
+        "egg"
+    ],
+    "entrance": [
+        "entryway",
+        "entree",
+        "entrance",
+        "entry",
+        "entranceway"
+    ],
+    "eye": [
+        "eye",
+        "oculus",
+        "optic"
+    ],
+    "fake": [
+        "postiche",
+        "fake",
+        "sham"
+    ],
+    "family": [
+        "family",
+        "house",
+        "home",
+        "menage",
+        "household"
+    ],
+    "fancy": [
+        "illusion",
+        "phantasy",
+        "fantasy",
+        "fancy"
+    ],
+    "faucet": [
+        "spigot",
+        "faucet"
+    ],
+    "fence": [
+        "fencing",
+        "fence"
+    ],
+    "figure": [
+        "figure",
+        "fig"
+    ],
+    "figurine": [
+        "figurine",
+        "statuette"
+    ],
+    "fireplace": [
+        "hearth",
+        "fireplace"
+    ],
+    "floating": [
+        "natation",
+        "floating"
+    ],
+    "floor": [
+        "flooring",
+        "floor"
+    ],
+    "floppy": [
+        "floppy",
+        "diskette"
+    ],
+    "flying": [
+        "flight",
+        "flying"
+    ],
+    "food": [
+        "food",
+        "nutrient"
+    ],
+    "foot": [
+        "pes",
+        "foot"
+    ],
+    "forest": [
+        "wood",
+        "forest",
+        "woods"
+    ],
+    "fries": [
+        "chips",
+        "fries"
+    ],
+    "frisbee": [
+        "Frisbee",
+        "frisbee"
+    ],
+    "frosting": [
+        "icing",
+        "frosting",
+        "ice"
+    ],
+    "fur": [
+        "pelt",
+        "fur"
+    ],
+    "giraffe": [
+        "giraffe",
+        "camelopard"
+    ],
+    "girl": [
+        "miss",
+        "girl",
+        "missy",
+        "fille"
+    ],
+    "glasses": [
+        "spectacles",
+        "eyeglasses",
+        "glasses",
+        "specs"
+    ],
+    "glove": [
+        "glove",
+        "mitt"
+    ],
+    "glowing": [
+        "glowing",
+        "glow",
+        "radiance"
+    ],
+    "graffiti": [
+        "graffiti",
+        "graffito"
+    ],
+    "gray": [
+        "greyness",
+        "grayness",
+        "grey",
+        "gray"
+    ],
+    "grazing": [
+        "grazing",
+        "graze"
+    ],
+    "green": [
+        "viridity",
+        "greenness",
+        "green"
+    ],
+    "grill": [
+        "grillroom",
+        "grill"
+    ],
+    "ground": [
+        "ground",
+        "land",
+        "earth"
+    ],
+    "guy": [
+        "hombre",
+        "bozo",
+        "cat",
+        "guy"
+    ],
+    "ham": [
+        "gammon",
+        "jambon",
+        "ham"
+    ],
+    "hand": [
+        "manus",
+        "mitt",
+        "paw",
+        "hand"
+    ],
+    "handbag": [
+        "handbag",
+        "bag",
+        "purse",
+        "pocketbook"
+    ],
+    "hands": [
+        "hands",
+        "custody"
+    ],
+    "hat": [
+        "chapeau",
+        "hat",
+        "lid"
+    ],
+    "head": [
+        "caput",
+        "head"
+    ],
+    "heart": [
+        "bosom",
+        "heart"
+    ],
+    "hedge": [
+        "hedgerow",
+        "hedge"
+    ],
+    "hose": [
+        "hose",
+        "hosiery"
+    ],
+    "icing": [
+        "frost",
+        "icing"
+    ],
+    "iron": [
+        "Fe",
+        "iron"
+    ],
+    "jersey": [
+        "jersey",
+        "Jersey",
+        "NJ"
+    ],
+    "ketchup": [
+        "ketchup",
+        "catsup",
+        "cetchup"
+    ],
+    "kettle": [
+        "kettle",
+        "boiler"
+    ],
+    "kneeling": [
+        "kneeling",
+        "kneel"
+    ],
+    "leaf": [
+        "foliage",
+        "leaf",
+        "leafage"
+    ],
+    "letter": [
+        "letter",
+        "missive"
+    ],
+    "lettuce": [
+        "cabbage",
+        "bread",
+        "boodle",
+        "clams",
+        "lolly",
+        "loot",
+        "moolah",
+        "lettuce",
+        "simoleons",
+        "kale",
+        "shekels",
+        "scratch",
+        "sugar",
+        "dinero",
+        "pelf",
+        "dough",
+        "lucre",
+        "wampum",
+        "gelt"
+    ],
+    "lid": [
+        "palpebra",
+        "eyelid",
+        "lid"
+    ],
+    "lit": [
+        "lit",
+        "literature"
+    ],
+    "locomotive": [
+        "locomotive",
+        "engine"
+    ],
+    "logo": [
+        "logotype",
+        "logo"
+    ],
+    "low": [
+        "depression",
+        "low"
+    ],
+    "luggage": [
+        "luggage",
+        "baggage"
+    ],
+    "lush": [
+        "souse",
+        "soaker",
+        "alcoholic",
+        "dipsomaniac",
+        "boozer",
+        "lush",
+        "alky"
+    ],
+    "lying": [
+        "prevarication",
+        "fabrication",
+        "lying"
+    ],
+    "magazine": [
+        "magazine",
+        "mag"
+    ],
+    "men": [
+        "men",
+        "hands",
+        "manpower",
+        "workforce"
+    ],
+    "menu": [
+        "card",
+        "carte",
+        "menu"
+    ],
+    "microphone": [
+        "mike",
+        "microphone"
+    ],
+    "monitor": [
+        "proctor",
+        "monitor"
+    ],
+    "motorcycle": [
+        "motorcycle",
+        "bike"
+    ],
+    "mound": [
+        "mound",
+        "hill"
+    ],
+    "mountain": [
+        "mountain",
+        "mount"
+    ],
+    "mud": [
+        "clay",
+        "mud"
+    ],
+    "mug": [
+        "mug",
+        "mugful"
+    ],
+    "mustache": [
+        "mustache",
+        "moustache"
+    ],
+    "napkin": [
+        "serviette",
+        "napkin"
+    ],
+    "neck": [
+        "cervix",
+        "neck"
+    ],
+    "neon": [
+        "Ne",
+        "neon"
+    ],
+    "net": [
+        "cyberspace",
+        "net",
+        "internet"
+    ],
+    "newspaper": [
+        "paper",
+        "newspaper"
+    ],
+    "nike": [
+        "nike",
+        "Nike"
+    ],
+    "number": [
+        "number",
+        "figure"
+    ],
+    "numbers": [
+        "Numbers",
+        "numbers"
+    ],
+    "open": [
+        "open",
+        "clear"
+    ],
+    "ornament": [
+        "ornament",
+        "decoration",
+        "ornamentation"
+    ],
+    "outdoors": [
+        "open",
+        "outdoors"
+    ],
+    "overcast": [
+        "cloudiness",
+        "overcast"
+    ],
+    "paint": [
+        "paint",
+        "pigment"
+    ],
+    "painting": [
+        "picture",
+        "painting"
+    ],
+    "pale": [
+        "picket",
+        "pale"
+    ],
+    "pants": [
+        "bloomers",
+        "pants",
+        "drawers",
+        "knickers"
+    ],
+    "papers": [
+        "papers",
+        "document"
+    ],
+    "park": [
+        "parkland",
+        "park"
+    ],
+    "passenger": [
+        "rider",
+        "passenger"
+    ],
+    "pasture": [
+        "lea",
+        "pasture",
+        "pastureland",
+        "ley"
+    ],
+    "path": [
+        "way",
+        "path"
+    ],
+    "patio": [
+        "terrace",
+        "patio"
+    ],
+    "pavement": [
+        "pavement",
+        "paving"
+    ],
+    "pedestrian": [
+        "footer",
+        "pedestrian",
+        "walker"
+    ],
+    "person": [
+        "individual",
+        "someone",
+        "soul",
+        "person",
+        "mortal",
+        "somebody"
+    ],
+    "phone": [
+        "telephone",
+        "phone"
+    ],
+    "picture": [
+        "image",
+        "picture",
+        "ikon",
+        "icon"
+    ],
+    "pitcher": [
+        "pitcher",
+        "hurler",
+        "twirler"
+    ],
+    "plaid": [
+        "tartan",
+        "plaid"
+    ],
+    "plain": [
+        "champaign",
+        "field",
+        "plain"
+    ],
+    "plant": [
+        "works",
+        "plant"
+    ],
+    "plate": [
+        "home",
+        "plate"
+    ],
+    "player": [
+        "participant",
+        "player"
+    ],
+    "policeman": [
+        "policeman",
+        "officer"
+    ],
+    "pond": [
+        "pool",
+        "pond"
+    ],
+    "posing": [
+        "sitting",
+        "posing"
+    ],
+    "post": [
+        "post",
+        "station"
+    ],
+    "poster": [
+        "notice",
+        "posting",
+        "card",
+        "poster",
+        "placard",
+        "bill"
+    ],
+    "potato": [
+        "potato",
+        "tater",
+        "murphy",
+        "spud"
+    ],
+    "propeller": [
+        "propeller",
+        "propellor"
+    ],
+    "purple": [
+        "purple",
+        "purpleness"
+    ],
+    "purse": [
+        "handbag",
+        "bag",
+        "purse",
+        "pocketbook"
+    ],
+    "railroad": [
+        "railroad",
+        "railway"
+    ],
+    "red": [
+        "red",
+        "redness"
+    ],
+    "refrigerator": [
+        "icebox",
+        "refrigerator"
+    ],
+    "restaurant": [
+        "eatery",
+        "restaurant"
+    ],
+    "riding": [
+        "riding",
+        "equitation"
+    ],
+    "road": [
+        "road",
+        "route"
+    ],
+    "rock": [
+        "stone",
+        "rock"
+    ],
+    "roman": [
+        "Roman",
+        "roman"
+    ],
+    "rose": [
+        "rose",
+        "rosebush"
+    ],
+    "rubber": [
+        "caoutchouc",
+        "rubber"
+    ],
+    "rug": [
+        "carpeting",
+        "rug",
+        "carpet"
+    ],
+    "running": [
+        "running",
+        "run"
+    ],
+    "runway": [
+        "rails",
+        "rail",
+        "track",
+        "runway"
+    ],
+    "sail": [
+        "sheet",
+        "sail",
+        "canvas",
+        "canvass"
+    ],
+    "saucer": [
+        "disc",
+        "disk",
+        "saucer"
+    ],
+    "seagull": [
+        "seagull",
+        "gull"
+    ],
+    "seat": [
+        "seat",
+        "place"
+    ],
+    "shining": [
+        "shining",
+        "polishing"
+    ],
+    "shoes": [
+        "shoes",
+        "place"
+    ],
+    "shop": [
+        "store",
+        "shop"
+    ],
+    "shorts": [
+        "shorts",
+        "trunks"
+    ],
+    "sidewalk": [
+        "pavement",
+        "sidewalk"
+    ],
+    "sign": [
+        "sign",
+        "mark"
+    ],
+    "silver": [
+        "silver",
+        "Ag"
+    ],
+    "sitting": [
+        "sitting",
+        "posing"
+    ],
+    "skin": [
+        "skin",
+        "tegument",
+        "cutis"
+    ],
+    "smiling": [
+        "smile",
+        "smiling",
+        "grin",
+        "grinning"
+    ],
+    "smoke": [
+        "fume",
+        "smoke"
+    ],
+    "snow": [
+        "snowfall",
+        "snow"
+    ],
+    "sofa": [
+        "couch",
+        "sofa",
+        "lounge"
+    ],
+    "speaker": [
+        "verbaliser",
+        "talker",
+        "utterer",
+        "verbalizer",
+        "speaker"
+    ],
+    "spectator": [
+        "witness",
+        "looker",
+        "spectator",
+        "watcher",
+        "viewer"
+    ],
+    "splashing": [
+        "spattering",
+        "splashing",
+        "splash",
+        "spatter",
+        "splattering"
+    ],
+    "spots": [
+        "spots",
+        "floater"
+    ],
+    "sprinkles": [
+        "jimmies",
+        "sprinkles"
+    ],
+    "square": [
+        "square",
+        "foursquare"
+    ],
+    "staircase": [
+        "stairway",
+        "staircase"
+    ],
+    "stairs": [
+        "stairs",
+        "steps"
+    ],
+    "step": [
+        "step",
+        "measure"
+    ],
+    "steps": [
+        "stairs",
+        "steps"
+    ],
+    "sticker": [
+        "sticker",
+        "pricker",
+        "thorn",
+        "spine",
+        "prickle",
+        "spikelet"
+    ],
+    "stone": [
+        "stone",
+        "rock"
+    ],
+    "store": [
+        "store",
+        "shop"
+    ],
+    "stove": [
+        "range",
+        "stove"
+    ],
+    "straight": [
+        "straight",
+        "heterosexual"
+    ],
+    "stroller": [
+        "saunterer",
+        "ambler",
+        "stroller"
+    ],
+    "suitcase": [
+        "grip",
+        "bag",
+        "suitcase"
+    ],
+    "sun": [
+        "Sun",
+        "sun"
+    ],
+    "surfer": [
+        "surfer",
+        "surfboarder"
+    ],
+    "surfing": [
+        "surfing",
+        "surfriding",
+        "surfboarding"
+    ],
+    "suv": [
+        "suv",
+        "SUV",
+        "S.U.V."
+    ],
+    "sweater": [
+        "jumper",
+        "sweater"
+    ],
+    "swimming": [
+        "swimming",
+        "swim"
+    ],
+    "swimsuit": [
+        "swimsuit",
+        "swimwear"
+    ],
+    "swinging": [
+        "vacillation",
+        "swinging",
+        "swing"
+    ],
+    "tag": [
+        "tag",
+        "ticket"
+    ],
+    "talking": [
+        "talk",
+        "talking"
+    ],
+    "tan": [
+        "tan",
+        "burn",
+        "sunburn",
+        "suntan"
+    ],
+    "taxi": [
+        "taxi",
+        "hack",
+        "cab",
+        "taxicab"
+    ],
+    "teeth": [
+        "teeth",
+        "dentition"
+    ],
+    "television": [
+        "telecasting",
+        "video",
+        "television",
+        "TV"
+    ],
+    "thick": [
+        "thick",
+        "midst"
+    ],
+    "thumb": [
+        "thumb",
+        "pollex"
+    ],
+    "tie": [
+        "necktie",
+        "tie"
+    ],
+    "tire": [
+        "tyre",
+        "tire"
+    ],
+    "toaster": [
+        "wassailer",
+        "toaster"
+    ],
+    "toilet": [
+        "can",
+        "privy",
+        "lavatory",
+        "bathroom",
+        "toilet",
+        "john",
+        "lav"
+    ],
+    "tongue": [
+        "glossa",
+        "lingua",
+        "tongue",
+        "clapper"
+    ],
+    "toy": [
+        "toy",
+        "plaything"
+    ],
+    "trailer": [
+        "laggard",
+        "lagger",
+        "poke",
+        "drone",
+        "trailer",
+        "dawdler"
+    ],
+    "trash": [
+        "scrap",
+        "trash",
+        "rubbish"
+    ],
+    "truck": [
+        "motortruck",
+        "truck"
+    ],
+    "trunk": [
+        "bole",
+        "trunk"
+    ],
+    "trunks": [
+        "shorts",
+        "trunks"
+    ],
+    "twig": [
+        "sprig",
+        "twig",
+        "branchlet"
+    ],
+    "umpire": [
+        "ump",
+        "umpire"
+    ],
+    "van": [
+        "van",
+        "vanguard"
+    ],
+    "vegetable": [
+        "vegetable",
+        "veggie",
+        "veg"
+    ],
+    "vest": [
+        "waistcoat",
+        "vest"
+    ],
+    "waist": [
+        "waist",
+        "waistline"
+    ],
+    "waiting": [
+        "waiting",
+        "wait"
+    ],
+    "walking": [
+        "walk",
+        "walking"
+    ],
+    "walkway": [
+        "paseo",
+        "walk",
+        "walkway"
+    ],
+    "watch": [
+        "watch",
+        "ticker"
+    ],
+    "water": [
+        "water",
+        "H2O"
+    ],
+    "wet": [
+        "moisture",
+        "wet"
+    ],
+    "windows": [
+        "windows",
+        "Windows"
+    ],
+    "windshield": [
+        "windshield",
+        "windscreen"
+    ],
+    "wine": [
+        "wine",
+        "vino"
+    ],
+    "wool": [
+        "woollen",
+        "woolen",
+        "wool"
+    ],
+    "wrist": [
+        "wrist",
+        "carpus"
+    ],
+    "yellow": [
+        "yellowness",
+        "yellow"
+    ],
+    "young": [
+        "young",
+        "offspring"
+    ],
+    "zoo": [
+        "zoo",
+        "menagerie"
+    ]
+}

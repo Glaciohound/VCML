@@ -1,0 +1,534 @@
+{
+    "Aves": {
+        "Gaviiformes": {
+            "Gaviidae": {
+                "Gavia": {
+                    "Pacific_Loon": {}
+                }
+            }
+        },
+        "Procellariiformes": {
+            "Procellariidae": {
+                "Fulmarus": {
+                    "Northern_Fulmar": {}
+                }
+            },
+            "Diomedeidae": {
+                "Phoebastria": {
+                    "Laysan_Albatross": {},
+                    "Black_footed_Albatross": {}
+                },
+                "Phoebetria": {
+                    "Sooty_Albatross": {}
+                }
+            }
+        },
+        "Passeriformes": {
+            "Icteridae": {
+                "Agelaius": {
+                    "Red_winged_Blackbird": {}
+                },
+                "Euphagus": {
+                    "Rusty_Blackbird": {},
+                    "Brewer_Blackbird": {}
+                },
+                "Sturnella": {
+                    "Western_Meadowlark": {}
+                },
+                "Dolichonyx": {
+                    "Bobolink": {}
+                },
+                "Quiscalus": {
+                    "Boat_tailed_Grackle": {}
+                },
+                "Xanthocephalus": {
+                    "Yellow_headed_Blackbird": {}
+                },
+                "Icterus": {
+                    "Hooded_Oriole": {},
+                    "Baltimore_Oriole": {},
+                    "Orchard_Oriole": {},
+                    "Scott_Oriole": {}
+                },
+                "Molothrus": {
+                    "Bronzed_Cowbird": {},
+                    "Shiny_Cowbird": {}
+                }
+            },
+            "Corvidae": {
+                "Cyanocitta": {
+                    "Blue_Jay": {}
+                },
+                "Cyanocorax": {
+                    "Green_Jay": {}
+                },
+                "Nucifraga": {
+                    "Clark_Nutcracker": {}
+                },
+                "Corvus": {
+                    "Fish_Crow": {},
+                    "Common_Raven": {},
+                    "White_necked_Raven": {},
+                    "American_Crow": {}
+                },
+                "Aphelocoma": {
+                    "Florida_Jay": {}
+                }
+            },
+            "Bombycillidae": {
+                "Bombycilla": {
+                    "Cedar_Waxwing": {},
+                    "Bohemian_Waxwing": {}
+                }
+            },
+            "Motacillidae": {
+                "Anthus": {
+                    "American_Pipit": {}
+                }
+            },
+            "Alaudidae": {
+                "Eremophila": {
+                    "Horned_Lark": {}
+                }
+            },
+            "Laniidae": {
+                "Lanius": {
+                    "Loggerhead_Shrike": {},
+                    "Great_Grey_Shrike": {}
+                }
+            },
+            "Certhiidae": {
+                "Certhia": {
+                    "Brown_Creeper": {}
+                }
+            },
+            "Tyrannidae": {
+                "Sayornis": {},
+                "Myiarchus": {
+                    "Great_Crested_Flycatcher": {}
+                },
+                "Contopus": {
+                    "Olive_sided_Flycatcher": {},
+                    "Western_Wood_Pewee": {}
+                },
+                "Pyrocephalus": {
+                    "Vermilion_Flycatcher": {}
+                },
+                "Empidonax": {
+                    "Least_Flycatcher": {},
+                    "Yellow_bellied_Flycatcher": {},
+                    "Acadian_Flycatcher": {}
+                },
+                "Tyrannus": {
+                    "Gray_Kingbird": {},
+                    "Scissor_tailed_Flycatcher": {},
+                    "Tropical_Kingbird": {}
+                }
+            },
+            "Vireonidae": {
+                "Vireo": {
+                    "Black_capped_Vireo": {},
+                    "Philadelphia_Vireo": {},
+                    "Yellow_throated_Vireo": {},
+                    "Red_eyed_Vireo": {},
+                    "White_eyed_Vireo": {},
+                    "Blue_headed_Vireo": {},
+                    "Warbling_Vireo": {}
+                }
+            },
+            "Passerellidae": {
+                "Junco": {
+                    "Dark_eyed_Junco": {}
+                },
+                "Passerculus": {
+                    "Savannah_Sparrow": {}
+                },
+                "Ammospiza": {
+                    "Seaside_Sparrow": {},
+                    "Nelson_Sharp_tailed_Sparrow": {},
+                    "Le_Conte_Sparrow": {}
+                },
+                "Melospiza": {
+                    "Song_Sparrow": {},
+                    "Lincoln_Sparrow": {}
+                },
+                "Zonotrichia": {
+                    "White_crowned_Sparrow": {},
+                    "Harris_Sparrow": {},
+                    "White_throated_Sparrow": {}
+                },
+                "Ammodramus": {
+                    "Grasshopper_Sparrow": {}
+                },
+                "Pipilo": {
+                    "Green_tailed_Towhee": {},
+                    "Eastern_Towhee": {}
+                },
+                "Passerella": {
+                    "Fox_Sparrow": {}
+                },
+                "Spizella": {
+                    "Clay_colored_Sparrow": {},
+                    "Brewer_Sparrow": {},
+                    "Field_Sparrow": {},
+                    "Chipping_Sparrow": {}
+                },
+                "Amphispiza": {
+                    "Black_throated_Sparrow": {}
+                },
+                "Centronyx": {
+                    "Baird_Sparrow": {},
+                    "Henslow_Sparrow": {}
+                },
+                "Pooecetes": {
+                    "Vesper_Sparrow": {}
+                }
+            },
+            "Cardinal": {},
+            "Passeridae": {
+                "Passer": {
+                    "House_Sparrow": {}
+                },
+                "Tree_Sparrow": {}
+            },
+            "Troglodytidae": {
+                "Cistothorus": {
+                    "Marsh_Wren": {}
+                },
+                "Campylorhynchus": {
+                    "Cactus_Wren": {}
+                },
+                "Troglodytes": {
+                    "House_Wren": {},
+                    "Winter_Wren": {}
+                },
+                "Thryomanes": {
+                    "Bewick_Wren": {}
+                },
+                "Salpinctes": {
+                    "Rock_Wren": {}
+                },
+                "Thryothorus": {
+                    "Carolina_Wren": {}
+                }
+            },
+            "Fringillidae": {
+                "Spinus": {
+                    "American_Goldfinch": {}
+                },
+                "Haemorhous": {
+                    "Purple_Finch": {}
+                },
+                "Leucosticte": {
+                    "Gray_crowned_Rosy_Finch": {}
+                },
+                "Carduelis": {
+                    "European_Goldfinch": {}
+                },
+                "Coccothraustes": {
+                    "Evening_Grosbeak": {}
+                },
+                "Pinicola": {
+                    "Pine_Grosbeak": {}
+                }
+            },
+            "Sturnidae": {
+                "Lamprotornis": {
+                    "Cape_Glossy_Starling": {}
+                }
+            },
+            "Ptilonorhynchidae": {
+                "Ailuroedus": {
+                    "Spotted_Catbird": {}
+                }
+            },
+            "Cardinalidae": {
+                "Passerina": {
+                    "Indigo_Bunting": {},
+                    "Lazuli_Bunting": {},
+                    "Painted_Bunting": {},
+                    "Blue_Grosbeak": {}
+                },
+                "Piranga": {
+                    "Scarlet_Tanager": {},
+                    "Summer_Tanager": {}
+                },
+                "Pheucticus": {
+                    "Rose_breasted_Grosbeak": {}
+                }
+            },
+            "Sittidae": {
+                "Sitta": {
+                    "White_breasted_Nuthatch": {}
+                }
+            },
+            "Mimidae": {
+                "Oreoscoptes": {
+                    "Sage_Thrasher": {}
+                },
+                "Mockingbird": {},
+                "Dumetella": {
+                    "Gray_Catbird": {}
+                },
+                "Toxostoma": {
+                    "Brown_Thrasher": {}
+                }
+            },
+            "Hirundinidae": {
+                "Hirundo": {
+                    "Barn_Swallow": {}
+                },
+                "Petrochelidon": {
+                    "Cliff_Swallow": {}
+                },
+                "Tachycineta": {
+                    "Tree_Swallow": {}
+                },
+                "Riparia": {
+                    "Bank_Swallow": {}
+                }
+            },
+            "Icteriidae": {
+                "Icteria": {
+                    "Yellow_breasted_Chat": {}
+                }
+            },
+            "Parulidae": {
+                "Setophaga": {
+                    "Chestnut_sided_Warbler": {},
+                    "Hooded_Warbler": {},
+                    "Yellow_Warbler": {},
+                    "Prairie_Warbler": {},
+                    "Myrtle_Warbler": {},
+                    "Pine_Warbler": {},
+                    "Cerulean_Warbler": {},
+                    "Magnolia_Warbler": {},
+                    "American_Redstart": {},
+                    "Palm_Warbler": {},
+                    "Cape_May_Warbler": {},
+                    "Bay_breasted_Warbler": {},
+                    "Black_throated_Blue_Warbler": {}
+                },
+                "Seiurus": {
+                    "Ovenbird": {}
+                },
+                "Oreothlypis": {
+                    "Orange_crowned_Warbler": {},
+                    "Tennessee_Warbler": {},
+                    "Nashville_Warbler": {}
+                },
+                "Mniotilta": {
+                    "Black_and_white_Warbler": {}
+                },
+                "Parkesia": {
+                    "Louisiana_Waterthrush": {},
+                    "Northern_Waterthrush": {}
+                },
+                "Protonotaria": {
+                    "Prothonotary_Warbler": {}
+                },
+                "Geothlypis": {
+                    "Common_Yellowthroat": {},
+                    "Kentucky_Warbler": {},
+                    "Mourning_Warbler": {}
+                },
+                "Limnothlypis": {
+                    "Swainson_Warbler": {}
+                },
+                "Helmitheros": {
+                    "Worm_eating_Warbler": {}
+                },
+                "Vermivora": {
+                    "Golden_winged_Warbler": {},
+                    "Blue_winged_Warbler": {}
+                },
+                "Cardellina": {
+                    "Wilson_Warbler": {},
+                    "Canada_Warbler": {}
+                }
+            }
+        },
+        "Suliformes": {
+            "Phalacrocoracidae": {
+                "Phalacrocorax": {
+                    "Brandt_Cormorant": {},
+                    "Red_faced_Cormorant": {},
+                    "Pelagic_Cormorant": {}
+                }
+            },
+            "Fregatidae": {
+                "Frigatebird": {}
+            }
+        },
+        "Piciformes": {
+            "Picidae": {
+                "Colaptes": {
+                    "Northern_Flicker": {}
+                },
+                "Picoides": {
+                    "American_Three_toed_Woodpecker": {}
+                },
+                "Dryobates": {
+                    "Red_cockaded_Woodpecker": {},
+                    "Downy_Woodpecker": {}
+                },
+                "Dryocopus": {
+                    "Pileated_Woodpecker": {}
+                },
+                "Melanerpes": {
+                    "Red_bellied_Woodpecker": {},
+                    "Red_headed_Woodpecker": {}
+                }
+            }
+        },
+        "Coraciiformes": {
+            "Alcedinidae": {
+                "Ceryle": {
+                    "Pied_Kingfisher": {}
+                },
+                "Chloroceryle": {
+                    "Green_Kingfisher": {}
+                },
+                "Megaceryle": {
+                    "Ringed_Kingfisher": {},
+                    "Belted_Kingfisher": {}
+                },
+                "Halcyon": {
+                    "White_breasted_Kingfisher": {}
+                }
+            }
+        },
+        "Cuculiformes": {
+            "Cuculidae": {
+                "Geococcyx": {},
+                "Coccyzus": {
+                    "Black_billed_Cuckoo": {},
+                    "Yellow_billed_Cuckoo": {},
+                    "Mangrove_Cuckoo": {}
+                },
+                "Crotophaga": {
+                    "Groove_billed_Ani": {}
+                }
+            }
+        },
+        "Caprimulgiformes": {
+            "Caprimulgidae": {
+                "Nighthawk": {},
+                "Antrostomus": {
+                    "Whip_poor_Will": {},
+                    "Chuck_will_Widow": {}
+                }
+            },
+            "Trochilidae": {
+                "Calypte": {
+                    "Anna_Hummingbird": {}
+                },
+                "Selasphorus": {
+                    "Rufous_Hummingbird": {}
+                },
+                "Archilochus": {
+                    "Ruby_throated_Hummingbird": {}
+                },
+                "Colibri": {
+                    "Green_Violetear": {}
+                }
+            }
+        },
+        "Pelecaniformes": {
+            "Pelecanidae": {
+                "Pelecanus": {
+                    "White_Pelican": {},
+                    "Brown_Pelican": {}
+                }
+            }
+        },
+        "Podicipediformes": {
+            "Podicipedidae": {
+                "Podilymbus": {
+                    "Pied_billed_Grebe": {}
+                },
+                "Podiceps": {
+                    "Eared_Grebe": {},
+                    "Horned_Grebe": {}
+                },
+                "Aechmophorus": {
+                    "Western_Grebe": {}
+                }
+            }
+        },
+        "Charadriiformes": {
+            "Stercorariidae": {
+                "Stercorarius": {
+                    "Long_tailed_Jaeger": {},
+                    "Pomarine_Jaeger": {}
+                }
+            },
+            "Alcidae": {
+                "Fratercula": {
+                    "Horned_Puffin": {}
+                },
+                "Cerorhinca": {
+                    "Rhinoceros_Auklet": {}
+                },
+                "Aethia": {
+                    "Crested_Auklet": {},
+                    "Parakeet_Auklet": {},
+                    "Least_Auklet": {}
+                },
+                "Cepphus": {
+                    "Pigeon_Guillemot": {}
+                }
+            },
+            "Laridae": {
+                "Sternula": {
+                    "Least_Tern": {}
+                },
+                "Hydroprogne": {
+                    "Caspian_Tern": {}
+                },
+                "Rissa": {
+                    "Red_legged_Kittiwake": {}
+                },
+                "Pagophila": {
+                    "Ivory_Gull": {}
+                },
+                "Thalasseus": {
+                    "Elegant_Tern": {}
+                },
+                "Chlidonias": {
+                    "Black_Tern": {}
+                },
+                "Sterna": {
+                    "Forsters_Tern": {},
+                    "Artic_Tern": {},
+                    "Common_Tern": {}
+                },
+                "Larus": {
+                    "Ring_billed_Gull": {},
+                    "Heermann_Gull": {},
+                    "Herring_Gull": {},
+                    "California_Gull": {},
+                    "Western_Gull": {},
+                    "Slaty_backed_Gull": {},
+                    "Glaucous_winged_Gull": {}
+                }
+            }
+        },
+        "Anseriformes": {
+            "Anatidae": {
+                "Mergus": {
+                    "Red_breasted_Merganser": {}
+                },
+                "Lophodytes": {
+                    "Hooded_Merganser": {}
+                },
+                "Mareca": {
+                    "Gadwall": {}
+                },
+                "Anas": {
+                    "Mallard": {}
+                }
+            }
+        }
+    }
+}

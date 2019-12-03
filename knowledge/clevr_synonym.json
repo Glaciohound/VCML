@@ -1,0 +1,27 @@
+{
+    "sphere": [
+        "sphere",
+        "ball"
+    ],
+    "cube": [
+        "cube",
+        "block"
+    ],
+    "large": [
+        "large",
+        "big"
+    ],
+    "small": [
+        "small",
+        "tiny"
+    ],
+    "metal": [
+        "metallic",
+        "metal",
+        "shiny"
+    ],
+    "rubber": [
+        "rubber",
+        "matte"
+    ]
+}
